@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(143b)
+project(PeterShell)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_COMPILER "g++")

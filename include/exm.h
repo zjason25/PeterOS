@@ -8,62 +8,43 @@
 
 namespace PeterOS {
     typedef int RC; // return code: 0 for success, -1 for error
+    template <typename Value>
+        struct Node {
+            Value value;
+            struct Node* next{};
+    };
+
     class ExtendedManager {
-         
+        public:
+            ExtendedManager();
+            ~ExtendedManager();
+            RC create(unsigned priority);
+            RC destroy(unsigned proc_id); // recursively destroy
+            RC request(unsigned resrc_id, unsigned k);
+            RC release(unsigned resrc_id, unsigned k);
+            RC timeout(); // moves proccess i from head of RL to end
+            RC scheduler(); // prints head of RL
+            RC init();
+            RC init_default();
+            unsigned pid = 0; // process id is not reused
 
-    struct proc {
-        unsigned state; // ready or blocked: 0 or 1
-        unsigned parent; // index of parent process i
-        child_list* children; // head of child process linked list
-        resrc_list* resources; // head of resources held by current process
-    };
+            struct proc {
+                unsigned state; // ready or blocked: 1 or 0
+                unsigned parent; // index of parent process i
+                Node<int>* children{}; // head of child process linked list
+                Node<int>* resources{}; // head of resources held by current process
+            };
+            
+            struct rsrc {
+                unsigned state;
+                Node<proc> waistList;
+            };
 
-    struct RL {
-        unsigned id;
-        unsigned state; // 0 for free, 1 for allocated
-        RL* next;
-    };
-    
-    struct WL {
-        unsigned proc_id;
-        WL* next;
-    };
-
-    struct resrc {
-        unsigned id;
-        unsigned proc;
-        WL* waitlist; // head of waitlist
-    };
-
-    struct child_list {
-        proc* cur;
-        proc* next;
-    };
-
-    struct resrc_list {
-        unsigned id; // resource id
-        resrc* next; // next id
-    };
-
-
-
-    public:
-        ExtendedManager();
-        ~ExtendedManager();
-        RC create(unsigned priority);
-        RC destroy(unsigned proc_id); // recursively destroy
-        RC request(unsigned resrc_id, unsigned k);
-        RC release(unsigned resrc_id, unsigned k);
-        RC timeout(); // moves proccess i from head of RL to end
-        RC scheduler(); // prints head of RL
-        RC init();
-        RC init_default();
-        unsigned pid = 0; // process id is not reused
-
-    private:
-        proc PCB[MAX_PROC]; // No reuse process control block
-        resrc RCB[MAX_RESRC];
-        RL* RL; // a head to Ready List linked list
+        private:
+            proc PCB[MAX_PROC]; // No reuse process control block
+            Node<rsrc> RCB[MAX_RESRC];
+            Node<proc> RL;
+            // RL* RL; // a head to Ready List linked list
     };
 }
 

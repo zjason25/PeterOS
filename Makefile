@@ -1,5 +1,5 @@
 # Project Name
-PROJECT = 143b
+PROJECT = PeterShell
 
 # Compiler
 CXX = g++
