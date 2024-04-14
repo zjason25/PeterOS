@@ -1,19 +1,25 @@
-#include "../include/exm.h"
+#include "exm.h"
 
 namespace PeterOS {
-    // ExtendedManager::ExtendedManager() = default();
-    // ExtendedManager::~ExtendedManager() = default();
+    ExtendedManager &ExtendedManager::instance() {
+        static ExtendedManager _ex_manager = ExtendedManager();
+        return _ex_manager;
+    }
+    ExtendedManager::ExtendedManager() = default;
+    ExtendedManager::~ExtendedManager() = default;
+    ExtendedManager::ExtendedManager(const ExtendedManager &) = default;
+    ExtendedManager &ExtendedManager::operator=(const ExtendedManager &) = default;
 
     // allocate PCB
-    RC ExtendedManager::create(unsigned priority){
+    RC ExtendedManager::create(int priority){
         return priority;
     }
 
-    RC ExtendedManager::destroy(unsigned proc_id){return proc_id;}
+    RC ExtendedManager::destroy(int proc_id){return proc_id;}
 
-    RC ExtendedManager::request(unsigned resrc_id, unsigned k){return resrc_id + k;}
+    RC ExtendedManager::request(int resrc_id, int k){return resrc_id + k;}
 
-    RC ExtendedManager::release(unsigned resrc_id, unsigned k){return resrc_id + k;}
+    RC ExtendedManager::release(int resrc_id, int k){return resrc_id + k;}
 
     RC ExtendedManager::timeout(){return 0;}
 

@@ -1,34 +1,28 @@
-# Project Name
 PROJECT = PeterShell
-
-# Compiler
 CXX = g++
-
-# Compiler Flags
 CXXFLAGS = -Wall -Wextra -Werror -std=c++11 -Iinclude
-
-# Source directory
 SRC_DIR = src
-
-# Object directory
 OBJ_DIR = obj
+BIN_DIR = bin
 
-# Source files
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
 
-# Object files
 OBJECTS = $(SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
 
-# Build the project
-$(PROJECT): $(OBJECTS)
+all: $(BIN_DIR)/$(PROJECT)
+
+$(BIN_DIR)/$(PROJECT): $(OBJECTS) | $(BIN_DIR)
 	$(CXX) $(OBJECTS) -o $@
 
-# Compile the source files into object files
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
-	mkdir -p $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Clean up
+$(OBJ_DIR) $(BIN_DIR):
+	mkdir -p $@
+
 .PHONY: clean
 clean:
-	rm -rf $(OBJ_DIR) $(PROJECT)
+	rm -rf $(OBJ_DIR) $(BIN_DIR)
+
+# Mark 'all' as a phony target to ensure it always runs
+.PHONY: all

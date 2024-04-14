@@ -3,9 +3,8 @@
 #include <sstream>
 #include <string>
 #include <unistd.h>
-#include <vector>
-#include "../include/usage.h"
-// #include "../include/exm.h"
+#include "usage.h"
+#include "exm.h"
 
 int main(int argc, char *argv[]) {
   int f_flag = 0;
@@ -22,11 +21,8 @@ int main(int argc, char *argv[]) {
         m_flag = 1;
         break;
       case '?': // Unknown option
-        std::cerr << "Unknown option: " << char(optopt) << std::endl << USAGE_MSG;
-        return -1;
-      default:
+        std::cerr << "Unknown option: " << char(optopt) << std::endl;
         std::cerr << USAGE_MSG;
-    return -1;
         return -1;
     }
   }
@@ -56,7 +52,8 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  // PeterOS::ExtendedManager exm = ExtendedManager();
+  PeterOS::ExtendedManager& manager = PeterOS::ExtendedManager::instance();
+  manager.init();
   // File mode
   if (f_flag) {
     std::cout << "Reading command from file: " << INFILE << std::endl;
@@ -78,6 +75,7 @@ int main(int argc, char *argv[]) {
   // Manual mode
   if (m_flag) {
     std::cout << "Manual mode" << std::endl;
+    
     std::string line;
     while (line != "q") {
       std::cout << "Enter a command: ";
@@ -94,9 +92,10 @@ int main(int argc, char *argv[]) {
       for (const auto& t : tokens) {
           std::cout << "Token: " << t << std::endl;
       }
-      // switch (cmd) {
+      if (line == "id")
+        std::cout << "hello";
+
       //   case "in":
-      //   case "id":
       //   case "cr":
       //   case "de":
       //   case "rq":
