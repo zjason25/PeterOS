@@ -1,10 +1,8 @@
 #include <fstream>
 #include <iostream>
-#include <sstream>
-#include <string>
 #include <unistd.h>
-#include <vector>
 #include "usage.h"
+#include "helpers.h"
 #include "exm.h"
 
 
@@ -55,7 +53,6 @@ int main(int argc, char *argv[]) {
   }
 
   PeterOS::ExtendedManager& manager = PeterOS::ExtendedManager::instance();
-  manager.init_default();
   // File mode
   if (f_flag) {
     std::cout << "Reading command from file: " << INFILE << std::endl;
@@ -66,46 +63,23 @@ int main(int argc, char *argv[]) {
     }
     std::string line;
     while (std::getline(file, line)) {
-        // Process the line
-        std::cout << line << std::endl;
+      run_command(line, manager);
+      std::cout << line << std::endl;
     }
-    file.close(); // Close the file
 
-    return 0; // Success
+    file.close(); // Close the file
   }
 
   // Manual mode
   if (m_flag) {
-    std::cout << "Manual mode" << std::endl;
-    
+    std::cout << "[Manual mode]" << std::endl;
     std::string line;
     while (line != "q") {
       std::cout << "Enter a command: ";
       std::getline(std::cin, line);
-      std::istringstream iss(line);
-      std::vector<std::string> tokens;
-      std::string token;
-
-      // Extract tokens and store them in a vector
-      while (iss >> token) {
-          tokens.push_back(token);
-      }
-        // Print tokens
-      for (const auto& t : tokens) {
-          std::cout << "Token: " << t << std::endl;
-      }
-      if (line == "id")
-        std::cout << "hello";
-
-
-      //   case "in":
-      //   case "cr":
-      //   case "de":
-      //   case "rq":
-      //   case "rl":
-      //   case "to":
-      // }
-      std::cout << "You entered: " << line << std::endl;
+      run_command(line, manager);
     }
   }
+
+  return 0;
 }
