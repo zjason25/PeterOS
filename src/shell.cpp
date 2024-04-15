@@ -3,8 +3,10 @@
 #include <sstream>
 #include <string>
 #include <unistd.h>
+#include <vector>
 #include "usage.h"
 #include "exm.h"
+
 
 int main(int argc, char *argv[]) {
   int f_flag = 0;
@@ -53,7 +55,7 @@ int main(int argc, char *argv[]) {
   }
 
   PeterOS::ExtendedManager& manager = PeterOS::ExtendedManager::instance();
-  manager.init();
+  manager.init_default();
   // File mode
   if (f_flag) {
     std::cout << "Reading command from file: " << INFILE << std::endl;
@@ -94,6 +96,7 @@ int main(int argc, char *argv[]) {
       }
       if (line == "id")
         std::cout << "hello";
+
 
       //   case "in":
       //   case "cr":
