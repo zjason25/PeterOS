@@ -18,7 +18,7 @@ namespace PeterOS {
         Value value;
         struct Node* next = nullptr;
         
-        Node() = default;                                                 // default constructor
+        Node() : value(), next(nullptr) {};                               // default constructor
         Node(Value val, Node* nxt = nullptr) : value(val), next(nxt) {};  // construct by value
     };
 
@@ -35,7 +35,12 @@ namespace PeterOS {
         RC init(int n, int u0, int u1, int u2, int u3);                   // initialize system with given parameters
         RC init_default();                                                // initialize system with default parameters
         int pid = 0;                                                      // process id is not reused
-        int RL_levels = 0;
+        int RL_levels = -1;
+        void print_RL();
+        void print_PCB();
+        void print_RCB();
+        void print_parent(int i);
+        void print_children(int i);
 
         struct rsrc_unit;
         struct w_proc;
@@ -45,15 +50,15 @@ namespace PeterOS {
             int state;                                                    // ready or blocked: 1 or 0
             int parent;                                                   // index of parent process i. -1 if no parent
             int p;                                                        // priority on ready list
-            Node<int>* children = nullptr;                                // head of child process linked list
-            Node<rsrc_unit*>* resources = nullptr;                        // head of resources held by current process
+            Node<int>* children = nullptr;                                // head of child process linked list (of integers)
+            Node<rsrc_unit*>* resources = nullptr;                        // head of resources held by current process (linked list of rsrc_unit*)
         };
         
         // represents resources at each priority level
         struct rsrc {
             int inventory;                                                // initial number of units
             int state;                                                    // number of available units
-            Node<w_proc*>* waitlist = nullptr;                      // a linked list of waiting processes
+            Node<w_proc*>* waitlist = nullptr;                            // a linked list of waiting processes
         };
 
         // represents resource being requested
