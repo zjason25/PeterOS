@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
   int m_flag = 0;
   char* INFILE = NULL;
 
+  // command line argument parsing
   int option;
   while ((option = getopt(argc, argv, "fm")) != -1) {
     switch (option) {
@@ -52,6 +53,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
+  // main process
   PeterOS::ExtendedManager& manager = PeterOS::ExtendedManager::instance();
   // File mode
   if (f_flag) {
@@ -66,7 +68,6 @@ int main(int argc, char *argv[]) {
       run_command(line, manager);
       std::cout << line << std::endl;
     }
-
     file.close(); // Close the file
   }
 

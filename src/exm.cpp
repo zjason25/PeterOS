@@ -32,6 +32,7 @@ namespace PeterOS {
             while (n >= 0) {
                 if (RL[n] != nullptr) {
                     new_proc->parent = RL[n]->value;
+                    std::cout << "parent: " << RL[n]->value << std::endl;
                     break; 
                 }
                 n--;
@@ -41,8 +42,7 @@ namespace PeterOS {
         // children and resources are null;
         PCB[pid] = new_proc;
         Node<int>* proc_i = new Node<int>(p);
-        Node<int>* head = RL[pid];
-        Node<int>* cur = head;
+        Node<int>* cur = RL[p];
         while (cur != nullptr) {
             cur = cur->next;
         }
