@@ -37,18 +37,35 @@ namespace PeterOS {
         int pid = 0;                                                      // process id is not reused
         int RL_levels = 0;
 
+        struct rsrc_unit;
+        struct w_proc;
+
+        // represents a process
         struct proc {
             int state;                                                    // ready or blocked: 1 or 0
             int parent;                                                   // index of parent process i. -1 if no parent
             int p;                                                        // priority on ready list
             Node<int>* children = nullptr;                                // head of child process linked list
-            Node<int>* resources = nullptr;                               // head of resources held by current process
+            Node<rsrc_unit*>* resources = nullptr;                        // head of resources held by current process
         };
         
+        // represents resources at each priority level
         struct rsrc {
             int inventory;                                                // initial number of units
             int state;                                                    // number of available units
-            Node<proc*>* waitlist = nullptr;                              // a linked list of processes
+            Node<w_proc*>* waitlist = nullptr;                      // a linked list of waiting processes
+        };
+
+        // represents resource being requested
+        struct rsrc_unit {
+            int index;
+            int units_requested;
+        };
+
+        // represents waiting processes
+        struct w_proc {
+            int proc_id;
+            int units_requested;
         };
         
         private:
