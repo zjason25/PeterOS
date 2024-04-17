@@ -39,6 +39,7 @@ namespace PeterOS {
             int n = RL_levels - 1;
             while (n >= 0) {
                 if (RL[n] != nullptr) {
+                    // insert children at the head
                     new_proc->parent = RL[n]->value;
                     std::cout << "parent: " << new_proc->parent << std::endl;
                     proc_i->next = PCB[new_proc->parent]->children;
@@ -69,21 +70,49 @@ namespace PeterOS {
     }
 
     // TODO: test
-    RC ExtendedManager::destroy(int proc_id) {
-        // First check if proc_id is child of currently running process
-        proc* cur_proc = nullptr;
-        int n = RL_levels - 1;
-        while (n >= 0) {
-            if (RL[n] != nullptr) {
-                cur_proc = PCB[RL[n]->value];
+    int ExtendedManager::destroy(int proc_id, int rec = 0) {
+        /* proc i can be destroyed when:
+        1. proc i exists
+        2. (proc i is a running process) or (proc i is a child of running process)
+        3. proc i is not the init process
+        4. proc_id falls in valid range
+        */
+        // First, locate running process
+        Node<int>* proc_i = nullptr;
+        for (int i = RL_levels - 1; i >= 0; i--) {
+            if (RL[i] != nullptr) {
+                proc_i = RL[i];
                 break;
             }
-            n--;
         }
-        if (cur_proc == nullptr || cur_proc->children == nullptr) {
+
+        // no process exists yet
+        if (proc_i == nullptr) {
+            std::cerr << "No process exists. Cannot destroy process " << proc_id << std::endl;
+            return -1;
+        }
+
+        // invalid process id
+        if (proc_id >= MAX_PROC || proc_id < INIT_PROC) {
+            std::cerr << "Invalid process id" << std::endl;
+            return -1;
+        }
+
+        // destroying non-existent process
+        proc* proc_de = PCB[proc_id]; // process to be destroyed
+        if (proc_de == nullptr) {
+            std::cerr << "Process " << proc_id << " does not exist" << std::endl;
+            return -1;
+        }
+
+        proc* cur_proc = PCB[proc_i->value]; // running process
+        // not a running process and not a child of running process
+        if (proc_i->value != proc_id && proc_de->parent != proc_i->value) {
             std::cerr << "Cannot destroy process " << proc_id << std::endl;
             return -1;
         }
+
+        // init process destroying itself
         if (cur_proc->parent == NULL_PROC && proc_id == INIT_PROC) {
             std::cerr << "Init proc cannot destroy itself " << std::endl;
             return -1;
@@ -91,9 +120,12 @@ namespace PeterOS {
 
         // destroy all proc j's children and grandchildren
         Node<int>* child = cur_proc->children;
-        while (child != nullptr) {
-            destroy(child->value);
-            child = child->next;
+        int num_proc = 1;
+        if (cur_proc->children != nullptr) {
+            while (child != nullptr) {
+                num_proc += destroy(child->value, 1);
+                child = child->next;
+            }
         }
         
         // remove proc j from its parent's list of children
@@ -132,39 +164,41 @@ namespace PeterOS {
             cur = cur->next;
         }
 
-// here
+
         // release all resources held by proc j
         if (cur_proc->resources != nullptr) {
             rsrc_unit* rsrcs = cur_proc->resources->value;
             while (rsrcs != nullptr) {
                 Node<rsrc*> resource = RCB[rsrcs->index];
-                // shouldn't be nullptr
-                if (resource.value != nullptr) {
-                    resource.value->state += rsrcs->units_requested;
-                    // remove from waitlist
-                    Node<w_proc*>* head = resource.value->waitlist;
-                    Node<w_proc*>* prev = nullptr;
-                    while (head != nullptr) {
-                        if (head->value->proc_id == proc_id) {
-                            if (prev == nullptr) {
-                                resource.value->waitlist = head->next;
-                            }
-                            else {
-                                prev->next = head->next;
-                            }
-                            delete head;
-                            break;
+                resource.value->state += rsrcs->units_requested;
+                // remove from waitlist
+                Node<w_proc*>* head = resource.value->waitlist;
+                Node<w_proc*>* prev = nullptr;
+                while (head != nullptr) {
+                    if (head->value->proc_id == proc_id) {
+                        if (prev == nullptr) {
+                            resource.value->waitlist = head->next;
                         }
-                        head = head->next;
+                        else {
+                            prev->next = head->next;
+                        }
+                        delete head;
+                        break;
                     }
+                    head = head->next;
                 }
+                
             }
         }
         
         delete PCB[proc_id];
-        std::cout << "n processes destroyed" << std::endl;
-
-        return 0;
+        
+        // if not recursive call
+        if (!rec) {
+            std::cout << num_proc << " processes destroyed" << std::endl;
+        }
+        
+        return num_proc;
     }
 
     // TODO: test

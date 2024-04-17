@@ -28,7 +28,7 @@ namespace PeterOS {
         static ExtendedManager &instance();                               // Access to the singleton instance
 
         RC create(int p);                                                 // creates a process i of p priority
-        RC destroy(int proc_id);                                          // recursively destroy
+        RC destroy(int proc_id, int rec);                                          // recursively destroy
         RC request(int resrc_id, int k);
         RC release(int resrc_id, int k);
         RC timeout();                                                     // moves proccess i from head of RL to end

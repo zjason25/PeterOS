@@ -22,7 +22,9 @@ void run_command(std::string line, PeterOS::ExtendedManager& manager) {
         manager.create(stoi(tokens[1]));
       }
       else if (cmd == "de") {
-        manager.destroy(stoi(tokens[1]));
+        manager.destroy(stoi(tokens[1]), 0);
+        manager.print_RL();
+        // manager.print_children();
       }
       else if (cmd == "rq") {
         manager.request(stoi(tokens[1]), stoi(tokens[2]));
