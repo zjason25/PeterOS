@@ -15,7 +15,7 @@ $(BIN_DIR)/$(PROJECT): $(OBJECTS) | $(BIN_DIR)
 	$(CXX) $(OBJECTS) -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@ -g
 
 $(OBJ_DIR) $(BIN_DIR):
 	mkdir -p $@

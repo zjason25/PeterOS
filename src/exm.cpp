@@ -13,69 +13,59 @@ namespace PeterOS {
 
     RC ExtendedManager::create(int p) {
         // error checking
-        if (p >= RL_levels) {
+        if (p >= RL_levels || p < 0) {
             std::cerr << "Cannot create process " << pid << " with priority " << p << std::endl;
             return -1; 
         }
-        // 1. allocate PCB
-        // 2. place process i into RL
-        // 3. set parent
 
-        proc* new_proc = new proc;
+        // allocate new proc i
+        PCB[pid] = new proc;
         Node<int>* proc_i = new Node<int>{pid, nullptr};
+        proc* new_proc = PCB[pid];
         new_proc->state = 1;
-        // parent of process 0 is NULL
+        new_proc->p = p;
+        
+        // set parent for proc i
         if (pid == 0) {
-            new_proc->parent = -1;
+            new_proc->parent = -1; // parent of process 0 is NULL
         }
-        // find the pid of the process with the highest priority on RL
         else {
+            // PROBLEM! must have inserted proc that already exists?
+            // find the pid of the process with the highest priority on RL (currently running process)
             int n = RL_levels - 1;
             while (n >= 0) {
                 if (RL[n] != nullptr) {
                     new_proc->parent = RL[n]->value;
-                    std::cout << "parent: " << RL[n]->value << std::endl;
-                    Node<int>* chld_head = PCB[RL[n]->value]->children;
-                    Node<int>* cur = chld_head;
-                    Node<int>* prev = nullptr;
-                    while (cur != nullptr) {
-                        prev = cur;
-                        cur = cur->next;
+                    std::cout << "parent: " << new_proc->parent << std::endl;
+                    // prevents self-looping in linked list: 
+                    if (PCB[new_proc->parent]->children != proc_i) {
+                        proc_i->next = PCB[new_proc->parent]->children;
+                        PCB[new_proc->parent]->children = proc_i;
                     }
-                    if (prev == nullptr) {
-                        PCB[RL[n]->value]->children = proc_i;
-                    }
-                    else {
-                        prev->next = proc_i;
-                    }
-                    break; 
+                    break;
                 }
                 n--;
             }
         }
 
-        new_proc->p = p;
-        // children and resources are null;
-        PCB[pid] = new_proc;
-        Node<int>* head = RL[p];
-        Node<int>* cur = head;
-        Node<int>* prev = nullptr;
-        while (cur != nullptr) {
-            prev = cur;
-            cur = cur->next;
-        }
-        if (prev == nullptr) {
+        // place process i into RL
+        Node<int>* RL_head = RL[p];
+        if (RL_head == nullptr) {
             RL[p] = proc_i;
-        } else {
-            prev->next = proc_i;
+        }
+        else {
+            while (RL_head->next != nullptr) {
+                RL_head = RL_head->next;
+            }
+            RL_head->next = proc_i;
         }
         
         std::cout << "process " << pid << " created" << std::endl;
-        print_RL();
-        print_children(pid);
+        // print_RL();
+        // print_parent(pid);
+        // print_children(pid);
         pid++;
         
-
         return 0;
     }
 
@@ -223,27 +213,31 @@ namespace PeterOS {
     // RC ExtendedManager::clearAll(){return 0;}
 
     RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
-        /* 
-        1. initialize n priority levels in ready list
-        2. initialize inventory for each of four resources
-        3. create Process 0
-        */
-
+        // initialize n priority levels in ready list
         this->RL = new Node<int>*[n];
+        this->RL_levels = n;
 
+        for (int i = 0; i < n; ++i) {
+            this->RL[i] = nullptr;
+        }
+
+        // initialize inventory for each of four resources
         int units[] = {u0, u1, u2, u3};
         for (int i = 0; i < MAX_RESRC; i++) {
             rsrc* new_rsrc = new rsrc;
             new_rsrc->inventory = units[i];
             new_rsrc->state = new_rsrc->inventory;
-            RCB[i].value = new_rsrc;
+            RCB[i] = new_rsrc;
         }
-        RL_levels = n; 
+
+        // create Process 0
         create(INIT_PROC);
+
         return 0;
     }
     
     RC ExtendedManager::init_default() {
+        // initialize system with default values
         return init(DEFAULT_N_UNITS, DEFAULT_U0, DEFAULT_U1, DEFAULT_U2, DEFAULT_U3);
     }
 
@@ -251,21 +245,26 @@ namespace PeterOS {
         std::cout << "P" << std::endl;
         for (int i = 0; i < RL_levels; i++) {
             Node<int>* proc_i = RL[i];
+            Node<int>* cur = proc_i;
             std::cout << i << " Head: ";
-            while (proc_i != nullptr) {
-                if (proc_i->next == nullptr) {
-                    std::cout << "process " << proc_i->value;
+            while (cur != nullptr) {
+                if (cur->next == nullptr) {
+                    std::cout << "process " << cur->value;
                 } else {
-                    std::cout << "process " << proc_i->value << " -> ";
+                    std::cout << "process " << cur->value << " -> ";
                 }
-                proc_i = proc_i->next;
+                cur = cur->next;
             }
             std::cout << std::endl;
         }
     }
 
     void ExtendedManager::print_parent(int i) {
-        std::cout << "process " << i << "'s parent: " << PCB[i]->parent << std::endl;
+        if (i == 0) {
+            std::cout << "process " << i << "'s parent: NULL" << std::endl;
+        } else {
+            std::cout << "process " << i << "'s parent: " << PCB[i]->parent << std::endl;
+        }
     }
 
     void ExtendedManager::print_children(int i) {

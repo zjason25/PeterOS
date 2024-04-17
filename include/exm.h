@@ -80,7 +80,7 @@ namespace PeterOS {
             ExtendedManager &operator=(const ExtendedManager &);          // Prevent assignment
 
             proc* PCB[MAX_PROC];                                          // No reuse process control block
-            Node<rsrc*> RCB[MAX_RESRC];                                   // A static array of pointers
+            rsrc* RCB[MAX_RESRC];                                         // A static array of rsrc's
             Node<int>** RL = nullptr;                                     // pointer to an array of integer linked lists
 
     };
