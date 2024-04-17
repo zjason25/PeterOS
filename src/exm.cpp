@@ -17,6 +17,11 @@ namespace PeterOS {
             std::cerr << "Cannot create process " << pid << " with priority " << p << std::endl;
             return -1; 
         }
+        
+        if (pid > 15) {
+            std::cerr << "Cannot create more than " << MAX_PROC << " processes " << std::endl;
+            return -1;
+        }
 
         // allocate new proc i
         PCB[pid] = new proc;
@@ -65,6 +70,17 @@ namespace PeterOS {
 
     // TODO: test
     RC ExtendedManager::destroy(int proc_id) {
+        // First check if proc_id is child of currently running process
+        // proc* cur_proc = nullptr;
+        // int n = RL_levels - 1;
+        // while (n >= 0) {
+        //     if (RL[n] != nullptr) {
+        //         cur_proc = PCB[RL[n]->value];
+        //         break;
+        //     }
+        //     n--;
+        // }
+
         proc* process = PCB[proc_id];
         // destroy all proc j's children and grandchildren
         if (process->children != nullptr) {
@@ -207,6 +223,12 @@ namespace PeterOS {
     // RC ExtendedManager::clearAll(){return 0;}
 
     RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
+        for (int i = 0; i < MAX_PROC; i++) {
+            delete PCB[i];
+        }
+
+
+
         // initialize n priority levels in ready list
         this->RL = new Node<int>*[n];
         this->RL_levels = n;
