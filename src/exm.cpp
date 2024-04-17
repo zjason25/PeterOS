@@ -30,25 +30,22 @@ namespace PeterOS {
             new_proc->parent = -1; // parent of process 0 is NULL
         }
         else {
-            // PROBLEM! must have inserted proc that already exists?
-            // find the pid of the process with the highest priority on RL (currently running process)
+            // find the pid of the first process on RL with the highest priority (currently running process)
             int n = RL_levels - 1;
             while (n >= 0) {
                 if (RL[n] != nullptr) {
                     new_proc->parent = RL[n]->value;
                     std::cout << "parent: " << new_proc->parent << std::endl;
-                    // prevents self-looping in linked list: 
-                    if (PCB[new_proc->parent]->children != proc_i) {
-                        proc_i->next = PCB[new_proc->parent]->children;
-                        PCB[new_proc->parent]->children = proc_i;
-                    }
+                    proc_i->next = PCB[new_proc->parent]->children;
+                    PCB[new_proc->parent]->children = proc_i;
                     break;
                 }
                 n--;
             }
         }
 
-        // place process i into RL
+        proc_i = new Node<int>{pid, nullptr};
+        // place process i into RL: FIFO
         Node<int>* RL_head = RL[p];
         if (RL_head == nullptr) {
             RL[p] = proc_i;
@@ -61,9 +58,6 @@ namespace PeterOS {
         }
         
         std::cout << "process " << pid << " created" << std::endl;
-        // print_RL();
-        // print_parent(pid);
-        // print_children(pid);
         pid++;
         
         return 0;
@@ -268,7 +262,7 @@ namespace PeterOS {
     }
 
     void ExtendedManager::print_children(int i) {
-        std::cout << "process " << i << "'s parent: ";
+        std::cout << "process " << i << "'s children: ";
         Node<int>* head = PCB[i]->children;
         while (head != nullptr) {
             if (head->next == nullptr) {
