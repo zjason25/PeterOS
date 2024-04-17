@@ -9,6 +9,7 @@
 #define DEFAULT_U2 2
 #define DEFAULT_U3 3
 #define INIT_PROC 0
+#define NULL_PROC -1
 
 namespace PeterOS {
     typedef int RC;                                                       // return code: 0 for success, -1 for error
