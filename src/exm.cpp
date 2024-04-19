@@ -68,6 +68,7 @@ RC ExtendedManager::create(int p) {
 
   std::cout << "process " << pid << " created" << std::endl;
   pid++;
+  scheduler();
 
   return 0;
 }
@@ -174,31 +175,31 @@ int ExtendedManager::destroy(int proc_id, int rec) {
     cur = next;
   }
 
-  // TODO: test after rq and rl
-  // release all resources held by proc j
-  if (cur_proc->resources != nullptr) {
-    std::cout << "removing resources";
-    rsrc_unit* rsrcs = cur_proc->resources->value;
-    while (rsrcs != nullptr) {
-      Node<rsrc*> resource = RCB[rsrcs->index];
-      resource.value->state += rsrcs->units_requested;
-      // remove from waitlist
-      Node<w_proc*>* head = resource.value->waitlist;
-      Node<w_proc*>* prev = nullptr;
-      while (head != nullptr) {
-        if (head->value->proc_id == proc_id) {
-          if (prev == nullptr) {
-            resource.value->waitlist = head->next;
-          } else {
-            prev->next = head->next;
-          }
-          delete head;
-          break;
-        }
-        head = head->next;
-      }
-    }
-  }
+  // // TODO: test after rq and rl
+  // // release all resources held by proc j
+  // if (cur_proc->resources != nullptr) {
+  //   std::cout << "removing resources";
+  //   rsrc_unit* rsrcs = cur_proc->resources->value;
+  //   while (rsrcs != nullptr) {
+  //     Node<rsrc*> resource = RCB[rsrcs->index];
+  //     resource.value->state += rsrcs->units_requested;
+  //     // remove from waitlist
+  //     Node<w_proc*>* head = resource.value->waitlist;
+  //     Node<w_proc*>* prev = nullptr;
+  //     while (head != nullptr) {
+  //       if (head->value->proc_id == proc_id) {
+  //         if (prev == nullptr) {
+  //           resource.value->waitlist = head->next;
+  //         } else {
+  //           prev->next = head->next;
+  //         }
+  //         delete head;
+  //         break;
+  //       }
+  //       head = head->next;
+  //     }
+  //   }
+  // }
 
   delete PCB[proc_id];
   PCB[proc_id] = nullptr;
@@ -206,6 +207,7 @@ int ExtendedManager::destroy(int proc_id, int rec) {
   // if not recursive call
   if (!rec) {
     std::cout << num_proc << " processes destroyed" << std::endl;
+    scheduler();
     return 0;
   }
 
@@ -291,21 +293,65 @@ RC ExtendedManager::request(int resrc_id, int k) {
     std::cout << "Placing process " << i << " in waitlist " << resrc_id
               << std::endl;
 
-    // TODO: scheduler
+    scheduler();
   }
   return 0;
 }
 
-RC ExtendedManager::release(int resrc_id, int k) { return resrc_id + k; }
+RC ExtendedManager::release(int resrc_id, int k) {
+  scheduler();
+  return resrc_id + k; 
+  }
 
 RC ExtendedManager::timeout() {
-  std::cout << "Timeout" << std::endl;
+  Node<int>* rng_proc_i = nullptr;
+  int level = -1;
+  for (int i = RL_levels - 1; i >= 0; i--) {
+    if (RL[i] != nullptr) {
+      rng_proc_i = RL[i];
+      level = i;
+      break;
+    }
+  }
+  if (rng_proc_i == nullptr) {
+    std::cerr << "No process exitst" << std::endl;
+    return -1;
+  }
+
+  // move head to RL to the end
+  if (RL[level]->next != nullptr) {
+    RL[level] = RL[level]->next;
+
+    Node<int>* cur = RL[level];
+    while (cur->next != nullptr) {
+      cur = cur->next;
+    }
+    cur->next = rng_proc_i;
+    rng_proc_i->next = nullptr;
+  }
+  
+  scheduler();
   return 0;
 }
 
-RC ExtendedManager::scheduler() { return 0; }
+RC ExtendedManager::scheduler() {
+  Node<int>* rng_proc_i = nullptr;
+  for (int i = RL_levels - 1; i >= 0; i--) {
+    if (RL[i] != nullptr) {
+      rng_proc_i = RL[i];
+      break;
+    }
+  }
+  if (rng_proc_i == nullptr) {
+    std::cerr << "No process exitst" << std::endl;
+    return -1;
+  }
+  std::cout << "process " << rng_proc_i->value << " running" << std::endl;
+  return 0; 
+}
 
 RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
+  std::cout << "initializing\n";
   if (this->init_status) {
     reset();
   }
@@ -378,10 +424,12 @@ void ExtendedManager::reset() {
     }
   }
 
-  for (int i = 0; i < RL_levels; ++i) {
-    if (RL[i] != nullptr) {
-      delete RL[i];
-      RL[i] = nullptr;
+  if (RL != nullptr) {
+    for (int i = 0; i < RL_levels; ++i) {
+      if (RL[i] != nullptr) {
+        delete RL[i];
+        RL[i] = nullptr;
+      }
     }
     delete RL;
     RL = nullptr;
