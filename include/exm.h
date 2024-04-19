@@ -28,7 +28,7 @@ namespace PeterOS {
         static ExtendedManager &instance();                               // Access to the singleton instance
 
         RC create(int p);                                                 // creates a process i of p priority
-        RC destroy(int proc_id, int rec);                                          // recursively destroy
+        RC destroy(int proc_id, int rec = 0);                             // recursively destroy. rec flag indicates recursive status
         RC request(int resrc_id, int k);
         RC release(int resrc_id, int k);
         RC timeout();                                                     // moves proccess i from head of RL to end
@@ -37,6 +37,9 @@ namespace PeterOS {
         RC init_default();                                                // initialize system with default parameters
         int pid = 0;                                                      // process id is not reused
         int RL_levels = -1;
+        int init_status = 0;
+        // helper functions
+        void reset();                                                     // reset PCB, RCB, RL and delete all process
         void print_RL();
         void print_PCB();
         void print_RCB();
@@ -52,7 +55,7 @@ namespace PeterOS {
             int parent;                                                   // index of parent process i. -1 if no parent
             int p;                                                        // priority on ready list
             Node<int>* children = nullptr;                                // head of child process linked list (of integers)
-            Node<rsrc_unit*>* resources = nullptr;                        // head of resources held by current process (linked list of rsrc_unit*)
+            Node<rsrc_unit*>* resources = nullptr;                         // head of resources held by current process (linked list of rsrc_unit*)
         };
         
         // represents resources at each priority level

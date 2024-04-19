@@ -1,4 +1,6 @@
+#include <iostream>
 #include "helpers.h"
+
 
 void run_command(std::string line, PeterOS::ExtendedManager& manager) {
     std::istringstream iss(line);
@@ -22,9 +24,7 @@ void run_command(std::string line, PeterOS::ExtendedManager& manager) {
         manager.create(stoi(tokens[1]));
       }
       else if (cmd == "de") {
-        manager.destroy(stoi(tokens[1]), 0);
-        manager.print_RL();
-        // manager.print_children();
+        manager.destroy(stoi(tokens[1]));
       }
       else if (cmd == "rq") {
         manager.request(stoi(tokens[1]), stoi(tokens[2]));
@@ -35,4 +35,18 @@ void run_command(std::string line, PeterOS::ExtendedManager& manager) {
       else if (cmd == "in") {
         manager.init(stoi(tokens[1]), stoi(tokens[2]), stoi(tokens[3]), stoi(tokens[4]), stoi(tokens[5]));
       }
+      else if (cmd == "pp") {
+        manager.print_parent(stoi(tokens[1]));
+      }
+      else if (cmd == "pc") {
+        manager.print_children(stoi(tokens[1]));
+      }
+      else if (cmd == "prl") {
+        manager.print_RL();
+      }
+      else {
+        std::cout << "Invalid command" << std::endl;
+      }
+      manager.print_RL();
+      
 }

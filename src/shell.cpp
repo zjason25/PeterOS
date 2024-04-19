@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
     std::cout << "[Manual mode]" << std::endl;
     std::string line;
     while (line != "q") {
-      std::cout << "Enter a command: ";
+      std::cout << "$<PeterOS> ";
       std::getline(std::cin, line);
       run_command(line, manager);
     }

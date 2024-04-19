@@ -39,9 +39,10 @@ namespace PeterOS {
             int n = RL_levels - 1;
             while (n >= 0) {
                 if (RL[n] != nullptr) {
-                    // insert children at the head
+                    // insert proc i at the parent's children 
                     new_proc->parent = RL[n]->value;
                     std::cout << "parent: " << new_proc->parent << std::endl;
+                    // delete children from oldest to newest?
                     proc_i->next = PCB[new_proc->parent]->children;
                     PCB[new_proc->parent]->children = proc_i;
                     break;
@@ -69,71 +70,75 @@ namespace PeterOS {
         return 0;
     }
 
-    // TODO: test
-    int ExtendedManager::destroy(int proc_id, int rec = 0) {
-        /* proc i can be destroyed when:
-        1. proc i exists
-        2. (proc i is a running process) or (proc i is a child of running process)
-        3. proc i is not the init process
-        4. proc_id falls in valid range
-        */
-        // First, locate running process
-        Node<int>* proc_i = nullptr;
+    // TODO: test release resource
+    int ExtendedManager::destroy(int proc_id, int rec) {
+        // First locate running process
+        Node<int>* rng_proc_i = nullptr;
         for (int i = RL_levels - 1; i >= 0; i--) {
             if (RL[i] != nullptr) {
-                proc_i = RL[i];
+                rng_proc_i = RL[i];
                 break;
             }
         }
-
-        // no process exists yet
-        if (proc_i == nullptr) {
-            std::cerr << "No process exists. Cannot destroy process " << proc_id << std::endl;
+        // error checking:
+        // 1.no process exists yet
+        if (rng_proc_i == nullptr) {
+            std::cerr << "No process exists" << std::endl;
             return -1;
         }
-
-        // invalid process id
+        // 2.invalid process id
         if (proc_id >= MAX_PROC || proc_id < INIT_PROC) {
             std::cerr << "Invalid process id" << std::endl;
             return -1;
         }
-
-        // destroying non-existent process
+        // 3.destroying non-existent process
         proc* proc_de = PCB[proc_id]; // process to be destroyed
         if (proc_de == nullptr) {
             std::cerr << "Process " << proc_id << " does not exist" << std::endl;
             return -1;
         }
-
-        proc* cur_proc = PCB[proc_i->value]; // running process
-        // not a running process and not a child of running process
-        if (proc_i->value != proc_id && proc_de->parent != proc_i->value) {
+        // 4.not a running process and not a child of running process
+        if (rng_proc_i->value != proc_id && proc_de->parent != rng_proc_i->value) {
             std::cerr << "Cannot destroy process " << proc_id << std::endl;
             return -1;
         }
-
-        // init process destroying itself
-        if (cur_proc->parent == NULL_PROC && proc_id == INIT_PROC) {
-            std::cerr << "Init proc cannot destroy itself " << std::endl;
+        // 5.init process destroying itself
+        if (proc_id == INIT_PROC) {
+            std::cerr << "Cannot destroy init process" << std::endl;
             return -1;
         }
 
-        // destroy all proc j's children and grandchildren
-        Node<int>* child = cur_proc->children;
-        int num_proc = 1;
-        if (cur_proc->children != nullptr) {
-            while (child != nullptr) {
-                num_proc += destroy(child->value, 1);
-                child = child->next;
-            }
-        }
+        proc* rng_proc = PCB[rng_proc_i->value]; // the running process
+
+        // destroy all proc i's children and grandchildren
+        Node<int>* child = nullptr;
+        proc* cur_proc = nullptr;
         
+        // destroying a child process
+        if (proc_de->parent == rng_proc_i->value) {
+            child = proc_de->children;
+            cur_proc = proc_de;
+        // destroying a running process
+        } else {
+            child = rng_proc->children;
+            cur_proc = rng_proc;
+        }
+        int num_proc = 1; // the process itself
+        Node<int>* nextChild = nullptr;
+        while (child != nullptr) {
+            nextChild = child->next;
+            num_proc += destroy(child->value, 1);
+            child = nextChild;
+        }
+
         // remove proc j from its parent's list of children
         proc* parent = PCB[cur_proc->parent];
         child = parent->children;
         Node<int>* prev = nullptr;
         Node<int>* cur = child;
+        Node<int>* next = nullptr;
         while (cur != nullptr) {
+            next = cur->next;
             if (cur->value == proc_id) {
                 if (prev == nullptr) {
                     parent->children = cur->next;
@@ -142,31 +147,37 @@ namespace PeterOS {
                     prev->next = cur->next;
                 }
                 delete cur;
+                cur = nullptr;
                 break;
             }
-            cur = cur->next;
+            prev = cur;
+            cur = next;
         }
-        
+
         // remove proc j from RL
         prev = nullptr;
         cur = RL[cur_proc->p];
         while (cur != nullptr) {
+            next = cur->next;
             if (cur->value == proc_id) {
                 if (prev == nullptr) {
-                    RL[cur_proc->p] = cur->next;
+                    RL[cur_proc->p] = next;
                 }
                 else {
-                    prev->next = cur->next;
+                    prev->next = next;
                 }
                 delete cur;
+                cur = nullptr;
                 break;
             }
-            cur = cur->next;
+            prev = cur;
+            cur = next;
         }
 
-
+        // TODO: test after rq and rl
         // release all resources held by proc j
         if (cur_proc->resources != nullptr) {
+            std::cout << "removing resources";
             rsrc_unit* rsrcs = cur_proc->resources->value;
             while (rsrcs != nullptr) {
                 Node<rsrc*> resource = RCB[rsrcs->index];
@@ -192,10 +203,12 @@ namespace PeterOS {
         }
         
         delete PCB[proc_id];
+        PCB[proc_id] = nullptr;
         
         // if not recursive call
         if (!rec) {
             std::cout << num_proc << " processes destroyed" << std::endl;
+            return 0;
         }
         
         return num_proc;
@@ -203,55 +216,91 @@ namespace PeterOS {
 
     // TODO: test
     RC ExtendedManager::request(int resrc_id, int k) {
-        Node<rsrc*> resource = RCB[resrc_id];
-        if (resource.value->inventory < k) {
-            std::cerr << "Not enough units in Resource " << resrc_id << std::endl;
+        // First locate running process
+        Node<int>* rng_proc_i = nullptr;
+        for (int i = RL_levels - 1; i >= 0; i--) {
+            if (RL[i] != nullptr) {
+                rng_proc_i = RL[i];
+                break;
+            }
+        }
+        // Error checking:
+        // 1.no process exists yet
+        if (rng_proc_i == nullptr) {
+            std::cerr << "No process exists" << std::endl;
             return -1;
         }
 
-        // locate the running process with highest priority
-        int cur_level = RL_levels - 1;
-        Node<int>* head = RL[cur_level];
-        while (cur_level >= 0) {
-            if (head != nullptr) {
-                head = RL[cur_level];
-                break;
-            }
-            cur_level--;
+        // 2.Resource does not exist
+        rsrc* resource = RCB[resrc_id];
+        if (resource == nullptr) {
+            std::cerr << "Resource does not exist" << std::endl;
+            return -1;
         }
-        // shouldn't happen; just in case
-        if (cur_level < 0) {
-            std::cerr << "error requesting resource" << std::endl;
+        // 3.Invalid resource id
+        if (resrc_id > MAX_RESRC || resrc_id < INIT_PROC) {
+            std::cerr << "Invalid resource id" << std::endl;
+            return -1;
+        }
+        // 4.Invalid resource amount
+        if (k <= INIT_PROC) {
+            std::cerr << "Invalid resource amount" << std::endl;
             return -1;
         }
 
         // allocate the resource
-        proc* cur_proc = PCB[head->value];
-        rsrc_unit* rsrc_requested = new rsrc_unit;
-        rsrc_requested->index = resrc_id;
-        rsrc_requested->units_requested = k;
-        Node<rsrc_unit*>* new_rsrc_unit = new Node<rsrc_unit*>{rsrc_requested, nullptr};
-        Node<rsrc_unit*>* head_rsrc = cur_proc->resources;
-        if (head_rsrc == nullptr) {
-            cur_proc->resources = new_rsrc_unit;
+        proc* rng_proc = PCB[rng_proc_i->value];
+        if (resource->state >= k) {
+            // subtract the allocated units from resource i
+            resource->state -= k; 
+
+            // insert (r, k) into proc i's resources
+            rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
+            Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
+            Node<rsrc_unit*>* cur = rng_proc->resources;
+            if (cur == nullptr) {
+                rng_proc->resources = new_rsrc;
+            }
+            else {
+                while (cur->next != nullptr) {
+                    cur = cur->next;
+                }
+                cur->next = new_rsrc;
+            }
+            std::cout << "Allocated " << k << " units of Resource "<< resrc_id << " to Process " << rng_proc_i->value << std::endl;
         }
         else {
-            Node<rsrc_unit*>* prev = nullptr;
-            while (head_rsrc != nullptr) {
-                prev = head_rsrc;
-                head_rsrc = head_rsrc->next;
-            }
-            prev->next = new_rsrc_unit;
-        }
+            // block process
+            rng_proc->state = 0; 
 
-        std::cout << "Resource " << resrc_id << " allocated " << k << " units" << std::endl;
+            // remove proc from RL
+            Node<int>* RL_head = RL[rng_proc->p];
+            int i = RL_head->value;
+            RL[rng_proc->p] = RL[rng_proc->p]->next;
+            delete RL_head;
+
+            // insert (i, k) into resource r's waitlist
+            w_proc* wt_data = new w_proc{rng_proc_i->value, k};
+            Node<w_proc*>* wt_proc = new Node<w_proc*>{wt_data, nullptr};
+            Node<w_proc*>* wtlist_head = resource->waitlist;
+            if (wtlist_head == nullptr) {
+                resource->waitlist = wt_proc;
+            }
+            else {
+                while (wtlist_head->next != nullptr) {
+                    wtlist_head = wtlist_head->next;
+                }
+                wtlist_head->next = wt_proc;
+            }
+            std::cout << "Placing process " << i << " in waitlist " << resrc_id << std::endl;
+
+            // TODO: scheduler 
+        }
         return 0;
     }
 
     RC ExtendedManager::release(int resrc_id, int k) {
-        
         return resrc_id + k;
-    
     }
 
     RC ExtendedManager::timeout() {
@@ -261,21 +310,17 @@ namespace PeterOS {
 
     RC ExtendedManager::scheduler() {return 0;}
     
-    // RC ExtendedManager::clearAll(){return 0;}
-
     RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
-        // for (int i = 0; i < MAX_PROC; i++) {
-        //     delete PCB[i];
-        // }
-
-
+        if (this->init_status) {
+            reset();
+        }
 
         // initialize n priority levels in ready list
         this->RL = new Node<int>*[n];
         this->RL_levels = n;
 
         for (int i = 0; i < n; ++i) {
-            this->RL[i] = nullptr;
+            RL[i] = nullptr;
         }
 
         // initialize inventory for each of four resources
@@ -289,6 +334,7 @@ namespace PeterOS {
 
         // create Process 0
         create(INIT_PROC);
+        this->init_status = 1;
 
         return 0;
     }
@@ -296,6 +342,58 @@ namespace PeterOS {
     RC ExtendedManager::init_default() {
         // initialize system with default values
         return init(DEFAULT_N_UNITS, DEFAULT_U0, DEFAULT_U1, DEFAULT_U2, DEFAULT_U3);
+    }
+
+    void ExtendedManager::reset() {
+        for (int i = 0; i < MAX_PROC; i++) {
+            if (PCB[i] != nullptr) {
+                Node<int>* child = PCB[i]->children;
+                Node<int>* cur_chld = child;
+                while (cur_chld != nullptr) {
+                    child = cur_chld->next;
+                    delete cur_chld;
+                    cur_chld = nullptr;
+                    cur_chld = child;
+                }
+                Node<rsrc_unit*>* rsrc = PCB[i]->resources;
+                Node<rsrc_unit*>* cur_rsrc = rsrc;
+                while (cur_rsrc != nullptr) {
+                    rsrc = cur_rsrc->next;
+                    delete cur_rsrc;
+                    cur_rsrc = nullptr;
+                    cur_rsrc = rsrc;
+                }
+                delete PCB[i];
+                PCB[i] = nullptr;
+            }
+        }
+
+        for (int i = 0; i < MAX_RESRC; ++i) {
+            if (RCB[i] != nullptr) {
+                Node<w_proc*>* wtlist = RCB[i]->waitlist;
+                Node<w_proc*>* cur_lst = wtlist;
+                while (cur_lst != nullptr) {
+                    wtlist = cur_lst->next;
+                    delete cur_lst;
+                    cur_lst = nullptr;
+                    cur_lst = wtlist;
+                }
+                delete RCB[i];
+                RCB[i] = nullptr;
+            }
+        }
+
+        for (int i = 0; i < RL_levels; ++i) {
+            if (RL[i] != nullptr) {
+                delete RL[i];
+                RL[i] = nullptr;
+            }
+            delete RL;
+            RL = nullptr;
+        }
+
+        this->pid = 0;
+        this->RL_levels = -1;
     }
 
     void ExtendedManager::print_RL() {
