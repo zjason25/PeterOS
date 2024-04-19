@@ -196,6 +196,7 @@ int ExtendedManager::destroy(int proc_id, int rec) {
   //         delete head;
   //         break;
   //       }
+  //       prev = head;
   //       head = head->next;
   //     }
   //   }
@@ -298,9 +299,56 @@ RC ExtendedManager::request(int resrc_id, int k) {
   return 0;
 }
 
+// TODO: test
 RC ExtendedManager::release(int resrc_id, int k) {
+  Node<int>* rng_proc_i = nullptr;
+  for (int i = RL_levels - 1; i >= 0; i--) {
+    if (RL[i] != nullptr) {
+      rng_proc_i = RL[i];
+      break;
+    }
+  }
+
+  if (rng_proc_i == nullptr) {
+    std::cerr << "No process exitst" << std::endl;
+    return -1;
+  }
+
+  Node<rsrc_unit*>* rsrcs = PCB[rng_proc_i->value]->resources;
+  if (rsrcs == nullptr) {
+    std::cerr << "Process " << rng_proc_i->value << " does not hold Resource " << resrc_id << std::endl;
+    return -1;
+  }
+
+  Node<rsrc_unit*>* prev = nullptr;
+  while (rsrcs != nullptr) {
+    rsrc_unit* unit = rsrcs->value;
+    if (unit->index == resrc_id && unit->units_requested <= k) {
+      if (unit->units_requested == k) {
+        Node<rsrc_unit*>* temp_rsrc = rsrcs;
+        rsrc_unit* temp_unit = unit;
+        if (prev == nullptr) {
+          rsrcs = rsrcs->next;
+        } else {
+          prev->next = rsrcs->next;
+        }
+        delete temp_unit;
+        delete temp_rsrc;
+      } else {
+        unit->units_requested -= k;
+      }
+      RCB[resrc_id]->state -= k;
+      break;
+    }
+    prev = rsrcs;
+    rsrcs = rsrcs->next;
+  }
+
+  // unblock process from waitlist
+
+
   scheduler();
-  return resrc_id + k; 
+  return 0; 
   }
 
 RC ExtendedManager::timeout() {
