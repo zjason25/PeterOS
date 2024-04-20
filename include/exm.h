@@ -38,13 +38,14 @@ namespace PeterOS {
         int pid = 0;                                                      // process id is not reused
         int RL_levels = -1;
         int init_status = 0;
-        // helper functions
         void reset();                                                     // reset PCB, RCB, RL and delete all process
+        // debugging helper functions
         void print_RL();
         void print_PCB();
         void print_RCB();
         void print_parent(int i);
         void print_children(int i);
+        void print_resource(int i);
 
         struct rsrc_unit;
         struct w_proc;

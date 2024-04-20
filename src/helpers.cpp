@@ -45,6 +45,9 @@ void run_command(std::string line, PeterOS::ExtendedManager& manager) {
     else if (cmd == "prl") {
       manager.print_RL();
     }
+    else if (cmd == "pr") {
+      manager.print_resource(stoi(tokens[1]));
+    }
     else {
       std::cout << "Invalid command" << std::endl;
     }

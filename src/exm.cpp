@@ -37,20 +37,27 @@ RC ExtendedManager::create(int p) {
   if (pid == 0) {
     new_proc->parent = NULL_PROC;  // parent of process 0 is NULL
   } else {
-    // find the pid of the first process on RL with the highest priority
-    // (currently running process)
-    int n = RL_levels - 1;
-    while (n >= 0) {
-      if (RL[n] != nullptr) {
-        // insert proc i at the parent's children
-        new_proc->parent = RL[n]->value;
-        std::cout << "parent: " << new_proc->parent << std::endl;
-        // delete children from oldest to newest?
-        proc_i->next = PCB[new_proc->parent]->children;
-        PCB[new_proc->parent]->children = proc_i;
+    // find currently running process
+    Node<int>* rng_proc_i = nullptr;
+    for (int i = RL_levels - 1; i >= 0; i--) {
+      if (RL[i] != nullptr) {
+        rng_proc_i = RL[i];
         break;
       }
-      n--;
+    }
+    if (rng_proc_i == nullptr) {
+      std::cerr << "error" << std::endl;
+      return -1;
+    }
+    new_proc->parent = rng_proc_i->value;
+    Node<int>* children = PCB[new_proc->parent]->children;
+    if (children == nullptr) {
+      PCB[new_proc->parent]->children = proc_i;
+    } else {
+      while (children->next != nullptr) {
+        children = children->next;
+      }
+      children->next = proc_i;
     }
   }
 
@@ -243,8 +250,8 @@ RC ExtendedManager::request(int resrc_id, int k) {
     std::cerr << "Invalid resource id" << std::endl;
     return -1;
   }
-  // 4.Invalid resource amount
-  if (k <= INIT_PROC) {
+  // 4.Invalid resource amount: prevents a process from being blocked forever
+  if (k <= INIT_PROC || k > RCB[resrc_id]->inventory) {
     std::cerr << "Invalid resource amount" << std::endl;
     return -1;
   }
@@ -280,7 +287,7 @@ RC ExtendedManager::request(int resrc_id, int k) {
     delete RL_head;
 
     // insert (i, k) into resource r's waitlist
-    w_proc* wt_data = new w_proc{rng_proc_i->value, k};
+    w_proc* wt_data = new w_proc{i, k};
     Node<w_proc*>* wt_proc = new Node<w_proc*>{wt_data, nullptr};
     Node<w_proc*>* wtlist_head = resource->waitlist;
     if (wtlist_head == nullptr) {
@@ -345,6 +352,7 @@ RC ExtendedManager::release(int resrc_id, int k) {
   }
 
   // unblock process from waitlist
+
 
 
   scheduler();
@@ -528,4 +536,26 @@ void ExtendedManager::print_children(int i) {
   std::cout << std::endl;
 }
 
+void ExtendedManager::print_resource(int i) {
+  if (i < 0 || i >= MAX_RESRC) {
+    std::cerr << "error" << std::endl;
+  } else {
+    rsrc* resource = RCB[i];
+    std::cout << "[Resource << " << i << "]" << std::endl;
+    std::cout << "Inventory: " << resource->inventory << std::endl;
+    std::cout << "State: " << resource->state << std::endl;
+    std::cout << "Waitlist: ";
+    Node<w_proc*>* waitlist = resource->waitlist;
+    while (waitlist != nullptr) {
+      w_proc* wt_proc = waitlist->value;
+      std::cout << "(" << wt_proc->proc_id << ", " << wt_proc->units_requested;
+      if (waitlist->next == nullptr) {
+        std::cout << ")" << std::endl;
+      } else {
+        std::cout << "), " << std::endl;
+      }
+      waitlist = waitlist->next;
+    }
+  }
+}
 }  // namespace PeterOS
