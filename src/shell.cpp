@@ -9,17 +9,21 @@
 int main(int argc, char *argv[]) {
   int f_flag = 0;
   int m_flag = 0;
+  int v_flag = 0;
   char* INFILE = NULL;
 
   // command line argument parsing
   int option;
-  while ((option = getopt(argc, argv, "fm")) != -1) {
+  while ((option = getopt(argc, argv, "fmv")) != -1) {
     switch (option) {
       case 'f': // file mode
         f_flag = 1;
         break;
       case 'm': // manual mode
         m_flag = 1;
+        break;
+      case 'v':
+        v_flag = 1;
         break;
       case '?': // Unknown option
         std::cerr << "Unknown option: " << char(optopt) << std::endl;
@@ -55,6 +59,9 @@ int main(int argc, char *argv[]) {
 
   // main process
   PeterOS::ExtendedManager& manager = PeterOS::ExtendedManager::instance();
+  if (v_flag) {
+    manager.verbose = true;
+  }
   // File mode
   if (f_flag) {
     std::cout << "Reading command from file: " << INFILE << std::endl;

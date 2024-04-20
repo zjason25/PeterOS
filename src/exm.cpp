@@ -12,6 +12,7 @@ ExtendedManager::~ExtendedManager() = default;
 ExtendedManager::ExtendedManager(const ExtendedManager&) = default;
 ExtendedManager& ExtendedManager::operator=(const ExtendedManager&) = default;
 
+// check
 RC ExtendedManager::create(int p) {
   // error checking
   if (p >= RL_levels || p < 0) {
@@ -28,16 +29,15 @@ RC ExtendedManager::create(int p) {
 
   // allocate new proc i
   PCB[pid] = new proc;
-  Node<int>* proc_i = new Node<int>{pid, nullptr};
   proc* new_proc = PCB[pid];
-  new_proc->state = 1;
+  new_proc->ready = 1;
   new_proc->p = p;
+  Node<int>* proc_i = new Node<int>{pid, nullptr};
 
   // set parent for proc i
   if (pid == 0) {
-    new_proc->parent = NULL_PROC;  // parent of process 0 is NULL
+    new_proc->parent = NULL_PROC;
   } else {
-    // find currently running process
     Node<int>* rng_proc_i = nullptr;
     for (int i = RL_levels - 1; i >= 0; i--) {
       if (RL[i] != nullptr) {
@@ -50,10 +50,12 @@ RC ExtendedManager::create(int p) {
       return -1;
     }
     new_proc->parent = rng_proc_i->value;
-    Node<int>* children = PCB[new_proc->parent]->children;
-    if (children == nullptr) {
+
+    // insert proc i into parent's list of children: FIFO
+    if (PCB[new_proc->parent]->children == nullptr) {
       PCB[new_proc->parent]->children = proc_i;
     } else {
+      Node<int>* children = PCB[new_proc->parent]->children;
       while (children->next != nullptr) {
         children = children->next;
       }
@@ -61,12 +63,12 @@ RC ExtendedManager::create(int p) {
     }
   }
 
-  proc_i = new Node<int>{pid, nullptr};
   // place process i into RL: FIFO
-  Node<int>* RL_head = RL[p];
-  if (RL_head == nullptr) {
+  proc_i = new Node<int>{pid, nullptr};
+  if (RL[p] == nullptr) {
     RL[p] = proc_i;
   } else {
+    Node<int>* RL_head = RL[p];
     while (RL_head->next != nullptr) {
       RL_head = RL_head->next;
     }
@@ -81,8 +83,8 @@ RC ExtendedManager::create(int p) {
 }
 
 // TODO: test release resource
-int ExtendedManager::destroy(int proc_id, int rec) {
-  // First locate running process
+int ExtendedManager::destroy(int proc_id, int &rec) {
+  // locate running process id
   Node<int>* rng_proc_i = nullptr;
   for (int i = RL_levels - 1; i >= 0; i--) {
     if (RL[i] != nullptr) {
@@ -120,28 +122,29 @@ int ExtendedManager::destroy(int proc_id, int rec) {
 
   proc* rng_proc = PCB[rng_proc_i->value];  // the running process
 
-  // destroy all proc i's children and grandchildren
+  // recursively destroy proc i's children
   Node<int>* child = nullptr;
   proc* cur_proc = nullptr;
 
-  // destroying a child process
+    // destroy a child process
   if (proc_de->parent == rng_proc_i->value) {
     child = proc_de->children;
     cur_proc = proc_de;
-    // destroying a running process
+    // destroy a running process
   } else {
     child = rng_proc->children;
     cur_proc = rng_proc;
   }
   int num_proc = 1;  // the process itself
-  Node<int>* nextChild = nullptr;
+  Node<int>* nextChild = nullptr; 
   while (child != nullptr) {
     nextChild = child->next;
-    num_proc += destroy(child->value, 1);
+    rec = 1;
+    num_proc += destroy(child->value, rec);
     child = nextChild;
   }
 
-  // remove proc j from its parent's list of children
+  // remove proc i from its parent's list of children
   proc* parent = PCB[cur_proc->parent];
   child = parent->children;
   Node<int>* prev = nullptr;
@@ -151,19 +154,18 @@ int ExtendedManager::destroy(int proc_id, int rec) {
     next = cur->next;
     if (cur->value == proc_id) {
       if (prev == nullptr) {
-        parent->children = cur->next;
+        parent->children = next;
       } else {
-        prev->next = cur->next;
+        prev->next = next;
       }
       delete cur;
-      cur = nullptr;
       break;
     }
     prev = cur;
     cur = next;
   }
 
-  // remove proc j from RL
+  // remove proc i from RL
   prev = nullptr;
   cur = RL[cur_proc->p];
   while (cur != nullptr) {
@@ -182,14 +184,13 @@ int ExtendedManager::destroy(int proc_id, int rec) {
     cur = next;
   }
 
-  // TODO: test after rq and rl
-  // release all resources held by proc j
+  // release all resources held by proc i
   if (cur_proc->resources != nullptr) {
     std::cout << "Removing resources\n";
     Node<rsrc_unit*>* cur_rsrc = cur_proc->resources;
     while (cur_rsrc != nullptr) {
-      rsrc_unit* rsrcs = cur_rsrc->value;
-      release(rsrcs->index, rsrcs->units_requested);
+      rsrc_unit* unit = cur_rsrc->value;
+      release(unit->index, unit->units_requested);
       cur_rsrc = cur_rsrc->next;
     }
   }
@@ -197,14 +198,16 @@ int ExtendedManager::destroy(int proc_id, int rec) {
   delete PCB[proc_id];
   PCB[proc_id] = nullptr;
 
-  // if not recursive call
-  if (!rec) {
-    std::cout << num_proc << " processes destroyed" << std::endl;
-    scheduler();
-    return 0;
+  // if it's a recursive call, only return the number of proc destroyed
+  if (rec) {
+    rec = 0;
+    return num_proc;
   }
+  
+  std::cout << num_proc << " processes destroyed" << std::endl;
+  scheduler();
 
-  return num_proc;
+  return 0;
 }
 
 // TODO: test
@@ -263,7 +266,7 @@ RC ExtendedManager::request(int resrc_id, int k) {
               << " to Process " << rng_proc_i->value << std::endl;
   } else {
     // block process
-    rng_proc->state = 0;
+    rng_proc->ready = 0;
 
     // remove proc from RL
     Node<int>* RL_head = RL[rng_proc->p];

@@ -25,20 +25,26 @@ namespace PeterOS {
 
     class ExtendedManager {
     public:
-        static ExtendedManager &instance();                               // Access to the singleton instance
+        static ExtendedManager &instance();                               // Access to the singleton class instance
 
         RC create(int p);                                                 // creates a process i of p priority
-        RC destroy(int proc_id, int rec = 0);                             // recursively destroy. rec flag indicates recursive status
-        RC request(int resrc_id, int k);
-        RC release(int resrc_id, int k);
+        RC destroy(int proc_id, int &rec);                                // recursively destroy. rec flag indicates recursive status
+        RC destroy(int proc_id) {                                         // overload destroy() to handle
+            int defaultRec = 0;
+            return destroy(proc_id, defaultRec);
+        }
+        RC request(int resrc_id, int k);                                  // requests k units of resource i
+        RC release(int resrc_id, int k);                                  // releases k units of resource i
         RC timeout();                                                     // moves proccess i from head of RL to end
         RC scheduler();                                                   // prints head of RL
         RC init(int n, int u0, int u1, int u2, int u3);                   // initialize system with given parameters
         RC init_default();                                                // initialize system with default parameters
         int pid = 0;                                                      // process id is not reused
-        int RL_levels = -1;
-        int init_status = 0;
+        int RL_levels = -1;                                               // levels of priority
+        int init_status = 0;                                              // enables reset() after the first system startup
         void reset();                                                     // reset PCB, RCB, RL and delete all process
+        bool verbose = false;
+
         // debugging helper functions
         void print_RL();
         void print_PCB();
@@ -52,11 +58,11 @@ namespace PeterOS {
 
         // represents a process
         struct proc {
-            int state;                                                    // ready or blocked: 1 or 0
+            int ready;                                                    // ready or blocked: 1 or 0
             int parent;                                                   // index of parent process i. -1 if no parent
             int p;                                                        // priority on ready list
             Node<int>* children = nullptr;                                // head of child process linked list (of integers)
-            Node<rsrc_unit*>* resources = nullptr;                         // head of resources held by current process (linked list of rsrc_unit*)
+            Node<rsrc_unit*>* resources = nullptr;                        // head of resources linked list (of rsrc_unit*)
         };
         
         // represents resources at each priority level
@@ -85,7 +91,7 @@ namespace PeterOS {
             ExtendedManager &operator=(const ExtendedManager &);          // Prevent assignment
 
             proc* PCB[MAX_PROC];                                          // No reuse process control block
-            rsrc* RCB[MAX_RESRC];                                         // A static array of rsrc's
+            rsrc* RCB[MAX_RESRC];                                         // A static array of rsrcs
             Node<int>** RL = nullptr;                                     // pointer to an array of integer linked lists
 
     };
