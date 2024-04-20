@@ -182,33 +182,18 @@ int ExtendedManager::destroy(int proc_id, int rec) {
     cur = next;
   }
 
-  // // TODO: test after rq and rl
-  // // release all resources held by proc j
-  // if (cur_proc->resources != nullptr) {
-  //   std::cout << "removing resources";
-  //   rsrc_unit* rsrcs = cur_proc->resources->value;
-  //   while (rsrcs != nullptr) {
-  //     Node<rsrc*> resource = RCB[rsrcs->index];
-  //     resource.value->state += rsrcs->units_requested;
-  //     // remove from waitlist
-  //     Node<w_proc*>* head = resource.value->waitlist;
-  //     Node<w_proc*>* prev = nullptr;
-  //     while (head != nullptr) {
-  //       if (head->value->proc_id == proc_id) {
-  //         if (prev == nullptr) {
-  //           resource.value->waitlist = head->next;
-  //         } else {
-  //           prev->next = head->next;
-  //         }
-  //         delete head;
-  //         break;
-  //       }
-  //       prev = head;
-  //       head = head->next;
-  //     }
-  //   }
-  // }
-
+  // TODO: test after rq and rl
+  // release all resources held by proc j
+  if (cur_proc->resources != nullptr) {
+    std::cout << "Removing resources\n";
+    Node<rsrc_unit*>* cur_rsrc = cur_proc->resources;
+    while (cur_rsrc != nullptr) {
+      rsrc_unit* rsrcs = cur_rsrc->value;
+      release(rsrcs->index, rsrcs->units_requested);
+      cur_rsrc = cur_rsrc->next;
+    }
+  }
+  
   delete PCB[proc_id];
   PCB[proc_id] = nullptr;
 
@@ -352,8 +337,21 @@ RC ExtendedManager::release(int resrc_id, int k) {
   }
 
   // unblock process from waitlist
-
-
+  Node<w_proc*>* head = RCB[resrc_id]->waitlist;
+  Node<w_proc*>* prev_list = nullptr;
+  while (head != nullptr) {
+    if (head->value->proc_id == rng_proc_i->value) {
+      if (prev == nullptr) {
+        RCB[resrc_id]->waitlist = head->next;
+      } else {
+        prev_list->next = head->next;
+      }
+      delete head;
+      break;
+    }
+    prev_list = head;
+    head = head->next;
+  }
 
   scheduler();
   return 0; 
