@@ -45,7 +45,13 @@ namespace PeterOS {
         void reset();                                                     // reset PCB, RCB, RL and delete all process
         bool verbose = false;
 
-
+        // debugging helper functions
+        void print_RL();
+        void print_PCB();
+        void print_RCB();
+        void print_parent(int i);
+        void print_children(int i);
+        void print_resource(int i);
 
         struct rsrc_unit;
         struct w_proc;
