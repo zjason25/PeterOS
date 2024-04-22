@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
     }
     std::string line;
     while (std::getline(file, line)) {
-      run_command(line, manager);
       std::cout << line << std::endl;
+      run_command(line, manager);
     }
     file.close(); // Close the file
   }

@@ -93,28 +93,23 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
     }
   }
   // error checking:
-  // 1.no process exists yet
-  if (rng_proc_i == nullptr) {
-    std::cerr << "No process exists" << std::endl;
-    return -1;
-  }
-  // 2.invalid process id
+  // 1.invalid process id
   if (proc_id >= MAX_PROC || proc_id < INIT_PROC) {
     std::cerr << "Invalid process id" << std::endl;
     return -1;
   }
-  // 3.destroying non-existent process
+  // 2.destroying non-existent process
   proc* proc_de = PCB[proc_id];  // process to be destroyed
   if (proc_de == nullptr) {
     std::cerr << "Process " << proc_id << " does not exist" << std::endl;
     return -1;
   }
-  // 4.not a running process and not a child of running process
+  // 3.not a running process and not a child of running process
   if (rng_proc_i->value != proc_id && proc_de->parent != rng_proc_i->value) {
     std::cerr << "Cannot destroy process " << proc_id << std::endl;
     return -1;
   }
-  // 5.init process destroying itself
+  // 4.init process destroying itself
   if (proc_id == INIT_PROC) {
     std::cerr << "Cannot destroy init process" << std::endl;
     return -1;
@@ -226,20 +221,40 @@ RC ExtendedManager::request(int resrc_id, int k) {
     std::cerr << "No process exists" << std::endl;
     return -1;
   }
-
-  // 2.Resource does not exist
+  // 2.if not init process
+  if (PCB[rng_proc_i->value]->parent == NULL_PROC) {
+    std::cerr << "Init proc cannot request resource" << std::endl;
+    return -1;
+  }
+  // 3.Resource does not exist
   rsrc* resource = RCB[resrc_id];
   if (resource == nullptr) {
     std::cerr << "Resource does not exist" << std::endl;
     return -1;
   }
-  // 3.Invalid resource id
+  // 4.Invalid resource id
   if (resrc_id > MAX_RESRC || resrc_id < INIT_PROC) {
     std::cerr << "Invalid resource id" << std::endl;
     return -1;
   }
-  // 4.Invalid resource amount: prevents a process from being blocked forever
-  if (k <= INIT_PROC || k > RCB[resrc_id]->inventory) {
+
+  // 5.Invalid resource amount
+  // 6a. requesting negative amount
+  if (k <= INIT_PROC) {
+    return -1;
+  }
+  // 5b. prevents a process from being blocked forever
+  Node<rsrc_unit*>* rsrc = PCB[rng_proc_i->value]->resources;
+  int cur_rsrc = 0;
+  while (rsrc != nullptr) {
+    rsrc_unit* unit = rsrc->value;
+    if (unit->index == resrc_id) {
+      cur_rsrc += unit->units_requested;
+      break;
+    }
+    rsrc = rsrc->next;
+  }
+  if (k + cur_rsrc > resource->inventory) {
     std::cerr << "Invalid resource amount" << std::endl;
     return -1;
   }
@@ -247,20 +262,29 @@ RC ExtendedManager::request(int resrc_id, int k) {
   // allocate the resource
   proc* rng_proc = PCB[rng_proc_i->value];
   if (resource->state >= k) {
-    // subtract the allocated units from resource i
     resource->state -= k;
 
     // insert (r, k) into proc i's resources
-    rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
-    Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
-    Node<rsrc_unit*>* cur = rng_proc->resources;
-    if (cur == nullptr) {
+    rsrc = rng_proc->resources;
+    if (rsrc == nullptr) {
+      rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
+      Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
       rng_proc->resources = new_rsrc;
     } else {
-      while (cur->next != nullptr) {
-        cur = cur->next;
+      while (rsrc->next != nullptr) {
+        // if the proc i already has some resrc i, just add to it
+        rsrc_unit* unit = rsrc->value;
+        if (unit->index == resrc_id) {
+          unit->units_requested += k;
+          break;
+        }
+        rsrc = rsrc->next;
       }
-      cur->next = new_rsrc;
+      if (rsrc->next == nullptr) {
+        rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
+        Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
+        rsrc->next = new_rsrc;
+      }
     }
     std::cout << "Allocated " << k << " units of Resource " << resrc_id
               << " to Process " << rng_proc_i->value << std::endl;
@@ -274,7 +298,7 @@ RC ExtendedManager::request(int resrc_id, int k) {
     RL[rng_proc->p] = RL[rng_proc->p]->next;
     delete RL_head;
 
-    // insert (i, k) into resource r's waitlist
+    // insert (i, k) into resource r's waitlist: FIFO
     w_proc* wt_data = new w_proc{i, k};
     Node<w_proc*>* wt_proc = new Node<w_proc*>{wt_data, nullptr};
     Node<w_proc*>* wtlist_head = resource->waitlist;
@@ -296,6 +320,11 @@ RC ExtendedManager::request(int resrc_id, int k) {
 
 // TODO: test
 RC ExtendedManager::release(int resrc_id, int k) {
+  if (k <= INIT_PROC) {
+    std::cerr << "Invalid amount to release" << std::endl;
+    return -1;
+  }
+
   Node<int>* rng_proc_i = nullptr;
   for (int i = RL_levels - 1; i >= 0; i--) {
     if (RL[i] != nullptr) {
@@ -311,49 +340,110 @@ RC ExtendedManager::release(int resrc_id, int k) {
 
   Node<rsrc_unit*>* rsrcs = PCB[rng_proc_i->value]->resources;
   if (rsrcs == nullptr) {
-    std::cerr << "Process " << rng_proc_i->value << " does not hold Resource " << resrc_id << std::endl;
+    std::cerr << "Current running process " << rng_proc_i->value << " does not any Resource " << std::endl;
     return -1;
   }
 
+  rsrc_unit* unit = nullptr;
   Node<rsrc_unit*>* prev = nullptr;
   while (rsrcs != nullptr) {
-    rsrc_unit* unit = rsrcs->value;
-    if (unit->index == resrc_id && unit->units_requested <= k) {
-      if (unit->units_requested == k) {
-        Node<rsrc_unit*>* temp_rsrc = rsrcs;
-        rsrc_unit* temp_unit = unit;
-        if (prev == nullptr) {
-          rsrcs = rsrcs->next;
-        } else {
-          prev->next = rsrcs->next;
-        }
-        delete temp_unit;
-        delete temp_rsrc;
-      } else {
-        unit->units_requested -= k;
-      }
-      RCB[resrc_id]->state -= k;
+    rsrc_unit* cur_unit = rsrcs->value;
+    if (cur_unit->index == resrc_id) {
+      unit = cur_unit;
       break;
     }
     prev = rsrcs;
     rsrcs = rsrcs->next;
   }
+  
+  if (unit == nullptr) {
+    std::cerr << "Current running process " << rng_proc_i->value << " does not hold Resource " << resrc_id << std::endl;
+    return -1;
+  }
+
+  if (unit->units_requested < k) {
+    std::cerr << "Invalid amount to release" << std::endl;
+    return -1;
+  }
+
+  if (unit->units_requested == k) {
+    rsrcs = PCB[rng_proc_i->value]->resources;
+    Node<rsrc_unit*>* temp_rsrc = rsrcs;
+    if (prev == nullptr) {
+      PCB[rng_proc_i->value]->resources = rsrcs->next;
+    } else {
+      prev->next = rsrcs->next;
+    }
+    delete unit;
+    delete temp_rsrc;
+    unit = nullptr;
+  } else {
+    unit->units_requested -= k;
+  }
+
+  rsrc* resource = RCB[resrc_id];
+  resource->state += k;
 
   // unblock process from waitlist
-  Node<w_proc*>* head = RCB[resrc_id]->waitlist;
+  Node<w_proc*>* wtlist = resource->waitlist;
   Node<w_proc*>* prev_list = nullptr;
-  while (head != nullptr) {
-    if (head->value->proc_id == rng_proc_i->value) {
-      if (prev == nullptr) {
-        RCB[resrc_id]->waitlist = head->next;
+  while (wtlist != nullptr) {
+    w_proc* wt_proc = wtlist->value;
+    int proc_i = wt_proc->proc_id;
+    int units = wt_proc->units_requested;
+    if (units <= resource->state) {
+      resource->state -= units;
+      proc* cur_proc = PCB[proc_i];
+
+      // insert (r, k) into proc i's resources
+      Node<rsrc_unit*>* rsrc = cur_proc->resources;
+      if (rsrc == nullptr) {
+        rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, units};
+        Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
+        cur_proc->resources = new_rsrc;
       } else {
-        prev_list->next = head->next;
+        while (rsrc->next != nullptr) {
+          // if the proc i already has some resrc i, just add to it
+          rsrc_unit* unit = rsrc->value;
+          if (unit->index == resrc_id) {
+            unit->units_requested += units;
+            break;
+          }
+          rsrc = rsrc->next;
+        }
+        if (rsrc->next == nullptr) {
+          rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, units};
+          Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
+          rsrc->next = new_rsrc;
+        }
       }
-      delete head;
+
+      cur_proc->ready = 1;
+
+      // remove (j, k) from waitlist
+      if (prev_list == nullptr) {
+        resource->waitlist = resource->waitlist->next;
+      } else {
+        prev_list->next = wtlist->next;
+      }
+      delete wtlist;
+
+      // insert j into RL
+      Node<int>* RL_level = RL[cur_proc->p];
+      if (RL_level == nullptr) {
+        RL[cur_proc->p] = new Node<int>{proc_i, nullptr};
+      } else {
+        while (RL_level->next != nullptr) {
+          RL_level = RL_level->next;
+        }
+        RL_level = new Node<int>{proc_i, nullptr};
+      }
+
+      prev_list = wtlist;
+      wtlist = wtlist->next;
+    } else {
       break;
     }
-    prev_list = head;
-    head = head->next;
   }
 
   scheduler();
