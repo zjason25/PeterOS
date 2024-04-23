@@ -4,6 +4,7 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++11 -Iinclude
 SRC_DIR = src
 OBJ_DIR = obj
 BIN_DIR = bin
+OUTPUT = output.txt
 
 SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
 
@@ -22,7 +23,7 @@ $(OBJ_DIR) $(BIN_DIR):
 
 .PHONY: clean
 clean:
-	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	rm -rf $(OBJ_DIR) $(BIN_DIR) $(OUTPUT)
 
 # Mark 'all' as a phony target to ensure it always runs
 .PHONY: all

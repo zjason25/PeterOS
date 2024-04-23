@@ -1,9 +1,8 @@
 #include <fstream>
 #include <iostream>
 #include <unistd.h>
-#include "usage.h"
 #include "helpers.h"
-#include "exm.h"
+#include "usage.h"
 
 
 int main(int argc, char *argv[]) {
@@ -22,7 +21,7 @@ int main(int argc, char *argv[]) {
       case 'm': // manual mode
         m_flag = 1;
         break;
-      case 'v':
+      case 'v': // verbose mode
         v_flag = 1;
         break;
       case '?': // Unknown option
@@ -31,7 +30,8 @@ int main(int argc, char *argv[]) {
         return -1;
     }
   }
-
+  
+  // some error handling
   if (argc < 2) {
     std::cerr << "Not enough arugments\n" << USAGE_MSG;
     return -1;
@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
   if (v_flag) {
     manager.verbose = true;
   }
+
   // File mode
   if (f_flag) {
     std::cout << "Reading command from file: " << INFILE << std::endl;

@@ -1,16 +1,22 @@
+#include <iostream>
 #include "exm.h"
 
-#include <iostream>
 
 namespace PeterOS {
 ExtendedManager& ExtendedManager::instance() {
   static ExtendedManager _ex_manager = ExtendedManager();
   return _ex_manager;
 }
-ExtendedManager::ExtendedManager() = default;
-ExtendedManager::~ExtendedManager() = default;
-ExtendedManager::ExtendedManager(const ExtendedManager&) = default;
-ExtendedManager& ExtendedManager::operator=(const ExtendedManager&) = default;
+ExtendedManager::ExtendedManager() {
+  openLogFile("output.txt");
+};
+ExtendedManager::~ExtendedManager() {
+   if (outFile.is_open()) {
+    outFile.close(); // Ensure the file is closed on destruction
+    }
+};
+ExtendedManager::ExtendedManager(const ExtendedManager&) = delete;
+ExtendedManager& ExtendedManager::operator=(const ExtendedManager&) = delete;
 
 // check
 RC ExtendedManager::create(int p) {
@@ -18,6 +24,12 @@ RC ExtendedManager::create(int p) {
   if (p >= RL_levels || p < 0) {
     std::cerr << "Cannot create process " << pid << " with priority " << p
               << std::endl;
+    return -1;
+  }
+
+  if (pid > 0 && p == 0) {
+    std::cerr << "error" << std::endl;
+    log("error");
     return -1;
   }
 
@@ -84,17 +96,9 @@ RC ExtendedManager::create(int p) {
 
 // TODO: test release resource
 int ExtendedManager::destroy(int proc_id, int &rec) {
-  // locate running process id
-  Node<int>* rng_proc_i = nullptr;
-  for (int i = RL_levels - 1; i >= 0; i--) {
-    if (RL[i] != nullptr) {
-      rng_proc_i = RL[i];
-      break;
-    }
-  }
   // error checking:
   // 1.invalid process id
-  if (proc_id >= MAX_PROC || proc_id < INIT_PROC) {
+  if (proc_id >= MAX_PROC || proc_id <= INIT_PROC) {
     std::cerr << "Invalid process id" << std::endl;
     return -1;
   }
@@ -104,17 +108,20 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
     std::cerr << "Process " << proc_id << " does not exist" << std::endl;
     return -1;
   }
+  // locate running process id
+  Node<int>* rng_proc_i = nullptr;
+  for (int i = RL_levels - 1; i >= 0; i--) {
+    if (RL[i] != nullptr) {
+      rng_proc_i = RL[i];
+      break;
+    }
+  }
   // 3.not a running process and not a child of running process
   if (rng_proc_i->value != proc_id && proc_de->parent != rng_proc_i->value) {
     std::cerr << "Cannot destroy process " << proc_id << std::endl;
     return -1;
   }
-  // 4.init process destroying itself
-  if (proc_id == INIT_PROC) {
-    std::cerr << "Cannot destroy init process" << std::endl;
-    return -1;
-  }
-
+  
   proc* rng_proc = PCB[rng_proc_i->value];  // the running process
 
   // recursively destroy proc i's children
@@ -201,13 +208,24 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
   
   std::cout << num_proc << " processes destroyed" << std::endl;
   scheduler();
-
   return 0;
 }
 
 // TODO: test
 RC ExtendedManager::request(int resrc_id, int k) {
-  // First locate running process
+  // Error checking
+  // Invalid resource id or resource amount
+  if (resrc_id >= MAX_RESRC || resrc_id < INIT_PROC || k <= INIT_PROC) {
+    std::cerr << "error" << std::endl;
+    return -1;
+  }
+  // Resource does not exist
+  rsrc* resource = RCB[resrc_id];
+  if (resource == nullptr) {
+    std::cerr << "Resource does not exist" << std::endl;
+    return -1;
+  }
+
   Node<int>* rng_proc_i = nullptr;
   for (int i = RL_levels - 1; i >= 0; i--) {
     if (RL[i] != nullptr) {
@@ -215,35 +233,18 @@ RC ExtendedManager::request(int resrc_id, int k) {
       break;
     }
   }
-  // Error checking:
-  // 1.no process exists yet
+  // No process exists on RL
   if (rng_proc_i == nullptr) {
     std::cerr << "No process exists" << std::endl;
     return -1;
   }
-  // 2.if not init process
+  // Init process cannot request rsrc
   if (PCB[rng_proc_i->value]->parent == NULL_PROC) {
     std::cerr << "Init proc cannot request resource" << std::endl;
     return -1;
   }
-  // 3.Resource does not exist
-  rsrc* resource = RCB[resrc_id];
-  if (resource == nullptr) {
-    std::cerr << "Resource does not exist" << std::endl;
-    return -1;
-  }
-  // 4.Invalid resource id
-  if (resrc_id > MAX_RESRC || resrc_id < INIT_PROC) {
-    std::cerr << "Invalid resource id" << std::endl;
-    return -1;
-  }
 
-  // 5.Invalid resource amount
-  // 6a. requesting negative amount
-  if (k <= INIT_PROC) {
-    return -1;
-  }
-  // 5b. prevents a process from being blocked forever
+  // prevents a process from being blocked forever
   Node<rsrc_unit*>* rsrc = PCB[rng_proc_i->value]->resources;
   int cur_rsrc = 0;
   while (rsrc != nullptr) {
@@ -258,36 +259,38 @@ RC ExtendedManager::request(int resrc_id, int k) {
     std::cerr << "Invalid resource amount" << std::endl;
     return -1;
   }
+  // End of error checking
+
 
   // allocate the resource
   proc* rng_proc = PCB[rng_proc_i->value];
   if (resource->state >= k) {
     resource->state -= k;
 
-    // insert (r, k) into proc i's resources
-    rsrc = rng_proc->resources;
-    if (rsrc == nullptr) {
-      rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
-      Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
-      rng_proc->resources = new_rsrc;
-    } else {
-      while (rsrc->next != nullptr) {
-        // if the proc i already has some resrc i, just add to it
-        rsrc_unit* unit = rsrc->value;
-        if (unit->index == resrc_id) {
-          unit->units_requested += k;
-          break;
-        }
-        rsrc = rsrc->next;
+  // insert (r, k) into proc i's resources: FIFO
+  rsrc = rng_proc->resources;
+    // insert at head
+  if (rsrc == nullptr) {
+    rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
+    rng_proc->resources = new Node<rsrc_unit*>{rsrc_units, nullptr};
+  } else {
+    // updating existing node
+    while (rsrc->next != nullptr) {
+      rsrc_unit* unit = rsrc->value;
+      if (unit->index == resrc_id) {
+        unit->units_requested += k;
+        break;
       }
-      if (rsrc->next == nullptr) {
-        rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
-        Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
-        rsrc->next = new_rsrc;
-      }
+      rsrc = rsrc->next;
     }
-    std::cout << "Allocated " << k << " units of Resource " << resrc_id
-              << " to Process " << rng_proc_i->value << std::endl;
+    // insert at tail
+    if (rsrc->next == nullptr) {
+      rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
+      rsrc->next = new Node<rsrc_unit*>{rsrc_units, nullptr};
+    }
+  }
+  std::cout << "Allocated " << k << " units of Resource " << resrc_id
+            << " to Process " << rng_proc_i->value << std::endl;
   } else {
     // block process
     rng_proc->ready = 0;
@@ -334,7 +337,7 @@ RC ExtendedManager::release(int resrc_id, int k) {
   }
 
   if (rng_proc_i == nullptr) {
-    std::cerr << "No process exitst" << std::endl;
+    std::cerr << "No process exitst on RL" << std::endl;
     return -1;
   }
 

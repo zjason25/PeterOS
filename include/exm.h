@@ -1,6 +1,8 @@
 #ifndef _exm_h_
 #define _exm_h_
 
+#include <fstream>
+
 #define MAX_PROC 16
 #define MAX_RESRC 4
 #define DEFAULT_N_UNITS 3
@@ -28,8 +30,8 @@ namespace PeterOS {
         static ExtendedManager &instance();                               // Access to the singleton class instance
 
         RC create(int p);                                                 // creates a process i of p priority
-        RC destroy(int proc_id, int &rec);                                // recursively destroy. rec flag indicates recursive status
-        RC destroy(int proc_id) {                                         // overload destroy() to handle
+        RC destroy(int proc_id, int &rec);                                // recursively destroy process. rec flag indicates recursive status
+        RC destroy(int proc_id) {                                         // overload destroy() to handle recursive destroy
             int defaultRec = 0;
             return destroy(proc_id, defaultRec);
         }
@@ -45,6 +47,13 @@ namespace PeterOS {
         void reset();                                                     // reset PCB, RCB, RL and delete all process
         bool verbose = false;
 
+        void log(const std::string& message) {
+            if (outFile.is_open()) {
+                outFile << message << std::endl;
+            } else {
+                std::cerr << "Logfile is not open for writing." << std::endl;
+            }
+        }
         // debugging helper functions
         void print_RL();
         void print_PCB();
@@ -52,6 +61,8 @@ namespace PeterOS {
         void print_parent(int i);
         void print_children(int i);
         void print_resource(int i);
+
+        
 
         struct rsrc_unit;
         struct w_proc;
@@ -93,6 +104,14 @@ namespace PeterOS {
             proc* PCB[MAX_PROC];                                          // No reuse process control block
             rsrc* RCB[MAX_RESRC];                                         // A static array of rsrcs
             Node<int>** RL = nullptr;                                     // pointer to an array of integer linked lists
+
+            std::ofstream outFile;
+            void openLogFile(const std::string &filename) {
+                outFile.open(filename);
+                if (!outFile) {
+                    std::cerr << "Failed to open " << filename << " for writing." << std::endl;
+                }
+            }
 
     };
 }

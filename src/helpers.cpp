@@ -50,9 +50,12 @@ void run_command(std::string line, PeterOS::ExtendedManager& manager) {
     else if (cmd == "pr") {
       manager.print_resource(stoi(tokens[1]));
     }
+    else if (cmd == "q") {
+      std::cout << "Goodbye :)" << std::endl;
+    }
     else {
       std::cout << "Invalid command" << std::endl;
     }
-    manager.print_RL();
+    // manager.print_RL();
   }
 }
