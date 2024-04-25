@@ -47,13 +47,6 @@ namespace PeterOS {
         void reset();                                                     // reset PCB, RCB, RL and delete all process
         bool verbose = false;
 
-        void log(const std::string& message) {
-            if (outFile.is_open()) {
-                outFile << message << std::endl;
-            } else {
-                std::cerr << "Logfile is not open for writing." << std::endl;
-            }
-        }
         // debugging helper functions
         void print_RL();
         void print_PCB();
@@ -106,13 +99,8 @@ namespace PeterOS {
             Node<int>** RL = nullptr;                                     // pointer to an array of integer linked lists
 
             std::ofstream outFile;
-            void openLogFile(const std::string &filename) {
-                outFile.open(filename);
-                if (!outFile) {
-                    std::cerr << "Failed to open " << filename << " for writing." << std::endl;
-                }
-            }
-
+            void openLogFile(const std::string &filename);
+            void log(const std::string& message);
     };
 }
 

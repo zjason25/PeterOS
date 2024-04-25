@@ -56,6 +56,6 @@ void run_command(std::string line, PeterOS::ExtendedManager& manager) {
     else {
       std::cout << "Invalid command" << std::endl;
     }
-    // manager.print_RL();
+    manager.print_RL();
   }
 }

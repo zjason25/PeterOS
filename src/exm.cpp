@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include "exm.h"
 
 
@@ -24,18 +25,20 @@ RC ExtendedManager::create(int p) {
   if (p >= RL_levels || p < 0) {
     std::cerr << "Cannot create process " << pid << " with priority " << p
               << std::endl;
+    log("-1");
     return -1;
   }
 
   if (pid > 0 && p == 0) {
     std::cerr << "error" << std::endl;
-    log("error");
+    log("-1");
     return -1;
   }
 
   if (pid > 15) {
     std::cerr << "Cannot create more than " << MAX_PROC << " processes "
               << std::endl;
+    log("-1");
     return -1;
   }
 
@@ -59,6 +62,7 @@ RC ExtendedManager::create(int p) {
     }
     if (rng_proc_i == nullptr) {
       std::cerr << "error" << std::endl;
+      log("-1");
       return -1;
     }
     new_proc->parent = rng_proc_i->value;
@@ -100,12 +104,14 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
   // 1.invalid process id
   if (proc_id >= MAX_PROC || proc_id <= INIT_PROC) {
     std::cerr << "Invalid process id" << std::endl;
+    log("-1");
     return -1;
   }
   // 2.destroying non-existent process
   proc* proc_de = PCB[proc_id];  // process to be destroyed
   if (proc_de == nullptr) {
     std::cerr << "Process " << proc_id << " does not exist" << std::endl;
+    log("-1");
     return -1;
   }
   // locate running process id
@@ -119,6 +125,7 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
   // 3.not a running process and not a child of running process
   if (rng_proc_i->value != proc_id && proc_de->parent != rng_proc_i->value) {
     std::cerr << "Cannot destroy process " << proc_id << std::endl;
+    log("-1");
     return -1;
   }
   
@@ -217,12 +224,14 @@ RC ExtendedManager::request(int resrc_id, int k) {
   // Invalid resource id or resource amount
   if (resrc_id >= MAX_RESRC || resrc_id < INIT_PROC || k <= INIT_PROC) {
     std::cerr << "error" << std::endl;
+    log("-1");
     return -1;
   }
   // Resource does not exist
   rsrc* resource = RCB[resrc_id];
   if (resource == nullptr) {
     std::cerr << "Resource does not exist" << std::endl;
+    log("-1");
     return -1;
   }
 
@@ -236,11 +245,13 @@ RC ExtendedManager::request(int resrc_id, int k) {
   // No process exists on RL
   if (rng_proc_i == nullptr) {
     std::cerr << "No process exists" << std::endl;
+    log("-1");
     return -1;
   }
   // Init process cannot request rsrc
   if (PCB[rng_proc_i->value]->parent == NULL_PROC) {
     std::cerr << "Init proc cannot request resource" << std::endl;
+    log("-1");
     return -1;
   }
 
@@ -257,6 +268,7 @@ RC ExtendedManager::request(int resrc_id, int k) {
   }
   if (k + cur_rsrc > resource->inventory) {
     std::cerr << "Invalid resource amount" << std::endl;
+    log("-1");
     return -1;
   }
   // End of error checking
@@ -316,8 +328,9 @@ RC ExtendedManager::request(int resrc_id, int k) {
     std::cout << "Placing process " << i << " in waitlist " << resrc_id
               << std::endl;
 
-    scheduler();
+    
   }
+  scheduler(); // placed here on purpose to output RL head to output.txt
   return 0;
 }
 
@@ -325,6 +338,7 @@ RC ExtendedManager::request(int resrc_id, int k) {
 RC ExtendedManager::release(int resrc_id, int k) {
   if (k <= INIT_PROC) {
     std::cerr << "Invalid amount to release" << std::endl;
+    log("-1");
     return -1;
   }
 
@@ -338,12 +352,14 @@ RC ExtendedManager::release(int resrc_id, int k) {
 
   if (rng_proc_i == nullptr) {
     std::cerr << "No process exitst on RL" << std::endl;
+    log("-1");
     return -1;
   }
 
   Node<rsrc_unit*>* rsrcs = PCB[rng_proc_i->value]->resources;
   if (rsrcs == nullptr) {
     std::cerr << "Current running process " << rng_proc_i->value << " does not any Resource " << std::endl;
+    log("-1");
     return -1;
   }
 
@@ -361,11 +377,13 @@ RC ExtendedManager::release(int resrc_id, int k) {
   
   if (unit == nullptr) {
     std::cerr << "Current running process " << rng_proc_i->value << " does not hold Resource " << resrc_id << std::endl;
+    log("-1");
     return -1;
   }
 
   if (unit->units_requested < k) {
     std::cerr << "Invalid amount to release" << std::endl;
+    log("-1");
     return -1;
   }
 
@@ -465,6 +483,7 @@ RC ExtendedManager::timeout() {
   }
   if (rng_proc_i == nullptr) {
     std::cerr << "No process exitst" << std::endl;
+    log("-1");
     return -1;
   }
 
@@ -494,15 +513,17 @@ RC ExtendedManager::scheduler() {
   }
   if (rng_proc_i == nullptr) {
     std::cerr << "No process exitst" << std::endl;
+    log("-1");
     return -1;
   }
   std::cout << "process " << rng_proc_i->value << " running" << std::endl;
+  log(std::to_string(rng_proc_i->value));
   return 0; 
 }
 
 RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
-  std::cout << "initializing\n";
   if (this->init_status) {
+    outFile << std::endl;
     reset();
   }
 
@@ -526,6 +547,7 @@ RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
   // create Process 0
   create(INIT_PROC);
   this->init_status = 1;
+
 
   return 0;
 }
@@ -650,6 +672,25 @@ void ExtendedManager::print_resource(int i) {
       }
       waitlist = waitlist->next;
     }
+  }
+}
+
+void ExtendedManager::openLogFile(const std::string &filename) {
+    outFile.open(filename);
+    if (!outFile) {
+        std::cerr << "Failed to open " << filename << " for writing." << std::endl;
+    }
+}
+
+void ExtendedManager::log(const std::string& message) {
+  if (outFile.is_open()) {
+    if (pid == 1) {
+      outFile << message;
+    } else {
+      outFile << " " + message;
+    }
+  } else {
+      std::cerr << "Logfile is not open for writing." << std::endl;
   }
 }
 }  // namespace PeterOS
