@@ -30,7 +30,7 @@ RC ExtendedManager::create(int p) {
   }
 
   if (pid > 0 && p == 0) {
-    std::cerr << "error" << std::endl;
+    std::cerr << "Cannot create process at priority 0 " << std::endl;
     log("-1");
     return -1;
   }
@@ -149,7 +149,10 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
   while (child != nullptr) {
     nextChild = child->next;
     rec = 1;
-    num_proc += destroy(child->value, rec);
+    int res = destroy(child->value, rec);
+    if (res != -1) {
+      num_proc += res;
+    }
     child = nextChild;
   }
 
@@ -219,7 +222,7 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
 }
 
 // TODO: test
-RC ExtendedManager::request(int resrc_id, int k) {
+RC ExtendedManager::request(int resrc_id, int k ) {
   // Error checking
   // Invalid resource id or resource amount
   if (resrc_id >= MAX_RESRC || resrc_id < INIT_PROC || k <= INIT_PROC) {
@@ -328,7 +331,6 @@ RC ExtendedManager::request(int resrc_id, int k) {
     std::cout << "Placing process " << i << " in waitlist " << resrc_id
               << std::endl;
 
-    
   }
   scheduler(); // placed here on purpose to output RL head to output.txt
   return 0;
@@ -522,6 +524,11 @@ RC ExtendedManager::scheduler() {
 }
 
 RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
+  if (n < 2) {
+    std::cerr << "Priority level must be at least 2" << std::endl;
+    return -1;
+  }
+  
   if (this->init_status) {
     outFile << std::endl;
     reset();
@@ -657,7 +664,7 @@ void ExtendedManager::print_resource(int i) {
     std::cerr << "error" << std::endl;
   } else {
     rsrc* resource = RCB[i];
-    std::cout << "[Resource << " << i << "]" << std::endl;
+    std::cout << "[Resource " << i << "]" << std::endl;
     std::cout << "Inventory: " << resource->inventory << std::endl;
     std::cout << "State: " << resource->state << std::endl;
     std::cout << "Waitlist: ";
