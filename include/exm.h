@@ -36,11 +36,13 @@ namespace PeterOS {
             return destroy(proc_id, defaultRec);
         }
         RC request(int resrc_id, int k);                                  // requests k units of resource i
-        RC release(int resrc_id, int k);                                  // releases k units of resource i
+        RC release(int proc_id, int resrc_id, int k);                     // releases k units of resource i in proc i
         RC timeout();                                                     // moves proccess i from head of RL to end
         RC scheduler();                                                   // prints head of RL
         RC init(int n, int u0, int u1, int u2, int u3);                   // initialize system with given parameters
         RC init_default();                                                // initialize system with default parameters
+        bool isValidDestroy(int proc_id);                                 // returns true if proc_id is valid to call destroy()
+        int isValidRelease(int resrc_id, int k);                          // returns proc_id on success; -1 on failure
         int pid = 0;                                                      // process id is not reused
         int RL_levels = -1;                                               // levels of priority
         int init_status = 0;                                              // enables reset() after the first system startup

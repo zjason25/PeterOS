@@ -98,21 +98,20 @@ RC ExtendedManager::create(int p) {
   return 0;
 }
 
-// TODO: test release resource
-int ExtendedManager::destroy(int proc_id, int &rec) {
+bool ExtendedManager::isValidDestroy(int proc_id) {
   // error checking:
   // 1.invalid process id
   if (proc_id >= MAX_PROC || proc_id <= INIT_PROC) {
     std::cerr << "Invalid process id" << std::endl;
     log("-1");
-    return -1;
+    return false;
   }
   // 2.destroying non-existent process
   proc* proc_de = PCB[proc_id];  // process to be destroyed
   if (proc_de == nullptr) {
     std::cerr << "Process " << proc_id << " does not exist" << std::endl;
     log("-1");
-    return -1;
+    return false;
   }
   // locate running process id
   Node<int>* rng_proc_i = nullptr;
@@ -126,33 +125,26 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
   if (rng_proc_i->value != proc_id && proc_de->parent != rng_proc_i->value) {
     std::cerr << "Cannot destroy process " << proc_id << std::endl;
     log("-1");
-    return -1;
+    return false;
   }
+
+  return true;
+}
+
+// TODO: test release resource
+int ExtendedManager::destroy(int proc_id, int &rec) {
   
-  proc* rng_proc = PCB[rng_proc_i->value];  // the running process
+  proc* cur_proc = PCB[proc_id];
 
   // recursively destroy proc i's children
-  Node<int>* child = nullptr;
-  proc* cur_proc = nullptr;
+  Node<int>* child = cur_proc->children;
 
-    // destroy a child process
-  if (proc_de->parent == rng_proc_i->value) {
-    child = proc_de->children;
-    cur_proc = proc_de;
-    // destroy a running process
-  } else {
-    child = rng_proc->children;
-    cur_proc = rng_proc;
-  }
   int num_proc = 1;  // the process itself
   Node<int>* nextChild = nullptr; 
   while (child != nullptr) {
     nextChild = child->next;
     rec = 1;
-    int res = destroy(child->value, rec);
-    if (res != -1) {
-      num_proc += res;
-    }
+    num_proc += destroy(child->value, rec);
     child = nextChild;
   }
 
@@ -171,6 +163,7 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
         prev->next = next;
       }
       delete cur;
+      cur = nullptr;
       break;
     }
     prev = cur;
@@ -202,7 +195,7 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
     Node<rsrc_unit*>* cur_rsrc = cur_proc->resources;
     while (cur_rsrc != nullptr) {
       rsrc_unit* unit = cur_rsrc->value;
-      release(unit->index, unit->units_requested);
+      release(proc_id, unit->index, unit->units_requested); // need to fix
       cur_rsrc = cur_rsrc->next;
     }
   }
@@ -336,8 +329,8 @@ RC ExtendedManager::request(int resrc_id, int k ) {
   return 0;
 }
 
-// TODO: test
-RC ExtendedManager::release(int resrc_id, int k) {
+int ExtendedManager::isValidRelease(int resrc_id, int k) {
+  // used for commandline call to release()
   if (k <= INIT_PROC) {
     std::cerr << "Invalid amount to release" << std::endl;
     log("-1");
@@ -366,14 +359,12 @@ RC ExtendedManager::release(int resrc_id, int k) {
   }
 
   rsrc_unit* unit = nullptr;
-  Node<rsrc_unit*>* prev = nullptr;
   while (rsrcs != nullptr) {
     rsrc_unit* cur_unit = rsrcs->value;
     if (cur_unit->index == resrc_id) {
       unit = cur_unit;
       break;
     }
-    prev = rsrcs;
     rsrcs = rsrcs->next;
   }
   
@@ -389,21 +380,36 @@ RC ExtendedManager::release(int resrc_id, int k) {
     return -1;
   }
 
-  if (unit->units_requested == k) {
-    rsrcs = PCB[rng_proc_i->value]->resources;
-    Node<rsrc_unit*>* temp_rsrc = rsrcs;
-    if (prev == nullptr) {
-      PCB[rng_proc_i->value]->resources = rsrcs->next;
-    } else {
-      prev->next = rsrcs->next;
+  return rng_proc_i->value; // returns proc_id of running process
+}
+
+// TODO: test
+RC ExtendedManager::release(int proc_id, int resrc_id, int k) {
+  Node<rsrc_unit*>* rsrcs = PCB[proc_id]->resources;
+
+  Node<rsrc_unit*>* prev = nullptr;
+  Node<rsrc_unit*>* cur = rsrcs; 
+  while (cur != nullptr) {
+    if (cur->value->index == resrc_id) {
+      if (cur->value->units_requested == k) {
+        if (prev == nullptr) {
+          PCB[proc_id]->resources = cur->next;
+        } else {
+          prev->next = cur->next;
+        }
+        delete cur->value;
+        delete cur;
+        cur = nullptr;
+      } else {
+        cur->value->units_requested -= k;
+      }
+      break;
     }
-    delete unit;
-    delete temp_rsrc;
-    unit = nullptr;
-  } else {
-    unit->units_requested -= k;
+    prev = cur;
+    cur = cur->next;
   }
 
+  // update RCB
   rsrc* resource = RCB[resrc_id];
   resource->state += k;
 

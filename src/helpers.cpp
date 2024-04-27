@@ -27,13 +27,18 @@ void run_command(std::string line, PeterOS::ExtendedManager& manager) {
       manager.create(stoi(tokens[1]));
     }
     else if (cmd == "de") {
-      manager.destroy(stoi(tokens[1]));
+      if (manager.isValidDestroy(stoi(tokens[1]))) {
+        manager.destroy(stoi(tokens[1]));
+      }
     }
     else if (cmd == "rq") {
       manager.request(stoi(tokens[1]), stoi(tokens[2]));
     }
     else if (cmd == "rl") {
-      manager.release(stoi(tokens[1]), stoi(tokens[2]));
+      int cur_proc = manager.isValidRelease(stoi(tokens[1]), stoi(tokens[2]));
+      if (cur_proc != -1) {
+        manager.release(stoi(tokens[1]), stoi(tokens[2]), cur_proc);
+      }
     }
     else if (cmd == "in") {
       manager.init(stoi(tokens[1]), stoi(tokens[2]), stoi(tokens[3]), stoi(tokens[4]), stoi(tokens[5]));
