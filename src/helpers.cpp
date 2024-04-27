@@ -37,7 +37,7 @@ void run_command(std::string line, PeterOS::ExtendedManager& manager) {
     else if (cmd == "rl") {
       int cur_proc = manager.isValidRelease(stoi(tokens[1]), stoi(tokens[2]));
       if (cur_proc != -1) {
-        manager.release(stoi(tokens[1]), stoi(tokens[2]), cur_proc);
+        manager.release(cur_proc, stoi(tokens[1]), stoi(tokens[2]));
       }
     }
     else if (cmd == "in") {

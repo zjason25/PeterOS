@@ -36,17 +36,21 @@ namespace PeterOS {
             return destroy(proc_id, defaultRec);
         }
         RC request(int resrc_id, int k);                                  // requests k units of resource i
-        RC release(int proc_id, int resrc_id, int k);                     // releases k units of resource i in proc i
+        RC release(int proc_id, int resrc_id, int k, int &rec);           // releases k units of resource i in proc i
+        RC release(int proc_id, int resrc_id, int k) {                    // a recursive release used in destroy()
+            int defaultRec = 0;
+            return release(proc_id, resrc_id, k, defaultRec);
+        }
         RC timeout();                                                     // moves proccess i from head of RL to end
         RC scheduler();                                                   // prints head of RL
         RC init(int n, int u0, int u1, int u2, int u3);                   // initialize system with given parameters
         RC init_default();                                                // initialize system with default parameters
+        void reset();                                                     // reset PCB, RCB, RL and delete all process
         bool isValidDestroy(int proc_id);                                 // returns true if proc_id is valid to call destroy()
         int isValidRelease(int resrc_id, int k);                          // returns proc_id on success; -1 on failure
         int pid = 0;                                                      // process id is not reused
         int RL_levels = -1;                                               // levels of priority
         int init_status = 0;                                              // enables reset() after the first system startup
-        void reset();                                                     // reset PCB, RCB, RL and delete all process
         bool verbose = false;
 
         // debugging helper functions
@@ -57,8 +61,6 @@ namespace PeterOS {
         void print_children(int i);
         void print_resource(int i);
 
-        
-
         struct rsrc_unit;
         struct w_proc;
 
@@ -67,6 +69,7 @@ namespace PeterOS {
             int ready;                                                    // ready or blocked: 1 or 0
             int parent;                                                   // index of parent process i. -1 if no parent
             int p;                                                        // priority on ready list
+            int blocker = -1;                                             // the resource on which proc i is blocked; helps find waiting list
             Node<int>* children = nullptr;                                // head of child process linked list (of integers)
             Node<rsrc_unit*>* resources = nullptr;                        // head of resources linked list (of rsrc_unit*)
         };

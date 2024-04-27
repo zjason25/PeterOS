@@ -189,13 +189,34 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
     cur = next;
   }
 
+  // remove proc i from waitlist
+  if (cur_proc->blocker != -1) {
+    Node<w_proc*>* prev_w = nullptr;
+    Node<w_proc*>* cur_w = RCB[cur_proc->blocker]->waitlist;
+    while (cur_w != nullptr) {
+      if (cur_w->value->proc_id == proc_id) {
+        if (prev_w == nullptr) {
+          RCB[cur_proc->blocker]->waitlist = cur_w->next;
+        } else {
+          prev_w->next = cur_w->next;
+        }
+          delete cur_w->value;
+          delete cur_w;
+          break;
+      }
+      prev_w = cur_w;
+      cur_w = cur_w->next;
+    }
+  }
+
   // release all resources held by proc i
   if (cur_proc->resources != nullptr) {
     std::cout << "Removing resources\n";
     Node<rsrc_unit*>* cur_rsrc = cur_proc->resources;
     while (cur_rsrc != nullptr) {
       rsrc_unit* unit = cur_rsrc->value;
-      release(proc_id, unit->index, unit->units_requested); // need to fix
+      int defaultRec = 1;
+      release(proc_id, unit->index, unit->units_requested, defaultRec);
       cur_rsrc = cur_rsrc->next;
     }
   }
@@ -269,7 +290,6 @@ RC ExtendedManager::request(int resrc_id, int k ) {
   }
   // End of error checking
 
-
   // allocate the resource
   proc* rng_proc = PCB[rng_proc_i->value];
   if (resource->state >= k) {
@@ -302,6 +322,8 @@ RC ExtendedManager::request(int resrc_id, int k ) {
   } else {
     // block process
     rng_proc->ready = 0;
+    rng_proc->blocker = resrc_id;
+    std::cout << "Process " << rng_proc_i->value << " is blocked on " << rng_proc->blocker << std::endl;
 
     // remove proc from RL
     Node<int>* RL_head = RL[rng_proc->p];
@@ -384,7 +406,7 @@ int ExtendedManager::isValidRelease(int resrc_id, int k) {
 }
 
 // TODO: test
-RC ExtendedManager::release(int proc_id, int resrc_id, int k) {
+RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
   Node<rsrc_unit*>* rsrcs = PCB[proc_id]->resources;
 
   Node<rsrc_unit*>* prev = nullptr;
@@ -474,8 +496,11 @@ RC ExtendedManager::release(int proc_id, int resrc_id, int k) {
       break;
     }
   }
-
-  scheduler();
+  if (!rec) {
+    scheduler();
+  } else {
+    rec = 0;
+  }
   return 0; 
   }
 
