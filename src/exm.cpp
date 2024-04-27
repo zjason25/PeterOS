@@ -409,6 +409,7 @@ int ExtendedManager::isValidRelease(int resrc_id, int k) {
 RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
   Node<rsrc_unit*>* rsrcs = PCB[proc_id]->resources;
 
+  // deletes rsrc node from proc i's resources
   Node<rsrc_unit*>* prev = nullptr;
   Node<rsrc_unit*>* cur = rsrcs; 
   while (cur != nullptr) {
