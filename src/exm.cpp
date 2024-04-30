@@ -8,20 +8,17 @@ ExtendedManager& ExtendedManager::instance() {
   static ExtendedManager _ex_manager = ExtendedManager();
   return _ex_manager;
 }
-ExtendedManager::ExtendedManager() {
-  openLogFile("output.txt");
-};
+ExtendedManager::ExtendedManager() { openLogFile("output.txt"); };
 ExtendedManager::~ExtendedManager() {
-   if (outFile.is_open()) {
-    outFile.close(); // Ensure the file is closed on destruction
-    }
+  if (outFile.is_open()) {
+    outFile.close();  // Close file on destruction
+  }
 };
 ExtendedManager::ExtendedManager(const ExtendedManager&) = delete;
 ExtendedManager& ExtendedManager::operator=(const ExtendedManager&) = delete;
 
-// check
 RC ExtendedManager::create(int p) {
-  // error checking
+  // Error checking
   if (p >= RL_levels || p < 0) {
     std::cerr << "Cannot create process " << pid << " with priority " << p
               << std::endl;
@@ -35,7 +32,7 @@ RC ExtendedManager::create(int p) {
     return -1;
   }
 
-  if (pid > 15) {
+  if (pid >= MAX_PROC) {
     std::cerr << "Cannot create more than " << MAX_PROC << " processes "
               << std::endl;
     log("-1");
@@ -99,7 +96,8 @@ RC ExtendedManager::create(int p) {
 }
 
 bool ExtendedManager::isValidDestroy(int proc_id) {
-  // error checking:
+  // Used for commandline call to destroy()
+  // Error checking:
   // 1.invalid process id
   if (proc_id >= MAX_PROC || proc_id <= INIT_PROC) {
     std::cerr << "Invalid process id" << std::endl;
@@ -131,16 +129,14 @@ bool ExtendedManager::isValidDestroy(int proc_id) {
   return true;
 }
 
-// TODO: test release resource
-int ExtendedManager::destroy(int proc_id, int &rec) {
-  
+RC ExtendedManager::destroy(int proc_id, int& rec) {
   proc* cur_proc = PCB[proc_id];
 
   // recursively destroy proc i's children
   Node<int>* child = cur_proc->children;
 
   int num_proc = 1;  // the process itself
-  Node<int>* nextChild = nullptr; 
+  Node<int>* nextChild = nullptr;
   while (child != nullptr) {
     nextChild = child->next;
     rec = 1;
@@ -200,9 +196,9 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
         } else {
           prev_w->next = cur_w->next;
         }
-          delete cur_w->value;
-          delete cur_w;
-          break;
+        delete cur_w->value;
+        delete cur_w;
+        break;
       }
       prev_w = cur_w;
       cur_w = cur_w->next;
@@ -221,7 +217,7 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
       cur_rsrc = next_rsrc;
     }
   }
-  
+
   delete PCB[proc_id];
   PCB[proc_id] = nullptr;
 
@@ -230,14 +226,13 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
     rec = 0;
     return num_proc;
   }
-  
+
   std::cout << num_proc << " processes destroyed" << std::endl;
   scheduler();
   return 0;
 }
 
-// TODO: test
-RC ExtendedManager::request(int resrc_id, int k ) {
+RC ExtendedManager::request(int resrc_id, int k) {
   // Error checking
   // Invalid resource id or resource amount
   if (resrc_id >= MAX_RESRC || resrc_id < INIT_PROC || k <= INIT_PROC) {
@@ -273,7 +268,7 @@ RC ExtendedManager::request(int resrc_id, int k ) {
     return -1;
   }
 
-  // prevents a process from being blocked forever
+  // Prevents a process from being blocked forever
   Node<rsrc_unit*>* rsrc = PCB[rng_proc_i->value]->resources;
   int cur_rsrc = 0;
   while (rsrc != nullptr) {
@@ -296,35 +291,36 @@ RC ExtendedManager::request(int resrc_id, int k ) {
   if (resource->state >= k) {
     resource->state -= k;
 
-  // insert (r, k) into proc i's resources: FIFO
-  rsrc = rng_proc->resources;
+    // insert (r, k) into proc i's resources: FIFO
+    rsrc = rng_proc->resources;
     // insert at head
-  if (rsrc == nullptr) {
-    rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
-    rng_proc->resources = new Node<rsrc_unit*>{rsrc_units, nullptr};
-  } else {
-    // updating existing node
-    while (rsrc->next != nullptr) {
-      rsrc_unit* unit = rsrc->value;
-      if (unit->index == resrc_id) {
-        unit->units_requested += k;
-        break;
-      }
-      rsrc = rsrc->next;
-    }
-    // insert at tail
-    if (rsrc->next == nullptr) {
+    if (rsrc == nullptr) {
       rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
-      rsrc->next = new Node<rsrc_unit*>{rsrc_units, nullptr};
+      rng_proc->resources = new Node<rsrc_unit*>{rsrc_units, nullptr};
+    } else {
+      // updating existing node
+      while (rsrc->next != nullptr) {
+        rsrc_unit* unit = rsrc->value;
+        if (unit->index == resrc_id) {
+          unit->units_requested += k;
+          break;
+        }
+        rsrc = rsrc->next;
+      }
+      // insert at tail
+      if (rsrc->next == nullptr) {
+        rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
+        rsrc->next = new Node<rsrc_unit*>{rsrc_units, nullptr};
+      }
     }
-  }
-  std::cout << "Allocated " << k << " units of Resource " << resrc_id
-            << " to Process " << rng_proc_i->value << std::endl;
+    std::cout << "Allocated " << k << " units of Resource " << resrc_id
+              << " to Process " << rng_proc_i->value << std::endl;
   } else {
     // block process
     rng_proc->ready = 0;
     rng_proc->blocker = resrc_id;
-    std::cout << "Process " << rng_proc_i->value << " is blocked on " << rng_proc->blocker << std::endl;
+    std::cout << "Process " << rng_proc_i->value << " is blocked on "
+              << rng_proc->blocker << std::endl;
 
     // remove proc from RL
     Node<int>* RL_head = RL[rng_proc->p];
@@ -346,9 +342,8 @@ RC ExtendedManager::request(int resrc_id, int k ) {
     }
     std::cout << "Placing process " << i << " in waitlist " << resrc_id
               << std::endl;
-
   }
-  scheduler(); // placed here on purpose to output RL head to output.txt
+  scheduler();  // placed here on purpose to output RL head to output.txt
   return 0;
 }
 
@@ -376,7 +371,8 @@ int ExtendedManager::isValidRelease(int resrc_id, int k) {
 
   Node<rsrc_unit*>* rsrcs = PCB[rng_proc_i->value]->resources;
   if (rsrcs == nullptr) {
-    std::cerr << "Current running process " << rng_proc_i->value << " does not any Resource " << std::endl;
+    std::cerr << "Current running process " << rng_proc_i->value
+              << " does not any Resource " << std::endl;
     log("-1");
     return -1;
   }
@@ -390,9 +386,10 @@ int ExtendedManager::isValidRelease(int resrc_id, int k) {
     }
     rsrcs = rsrcs->next;
   }
-  
+
   if (unit == nullptr) {
-    std::cerr << "Current running process " << rng_proc_i->value << " does not hold Resource " << resrc_id << std::endl;
+    std::cerr << "Current running process " << rng_proc_i->value
+              << " does not hold Resource " << resrc_id << std::endl;
     log("-1");
     return -1;
   }
@@ -403,16 +400,15 @@ int ExtendedManager::isValidRelease(int resrc_id, int k) {
     return -1;
   }
 
-  return rng_proc_i->value; // returns proc_id of running process
+  return rng_proc_i->value;  // returns proc_id of running process
 }
 
-// TODO: test
-RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
+RC ExtendedManager::release(int proc_id, int resrc_id, int k, int& rec) {
   Node<rsrc_unit*>* rsrcs = PCB[proc_id]->resources;
 
   // deletes rsrc node from proc i's resources
   Node<rsrc_unit*>* prev = nullptr;
-  Node<rsrc_unit*>* cur = rsrcs; 
+  Node<rsrc_unit*>* cur = rsrcs;
   while (cur != nullptr) {
     if (cur->value->index == resrc_id) {
       if (cur->value->units_requested == k) {
@@ -440,7 +436,7 @@ RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
   // unblock process from waitlist
   Node<w_proc*>* wtlist = resource->waitlist;
   Node<w_proc*>* temp = nullptr;
-  
+
   while (wtlist != nullptr && resource->state > 0) {
     w_proc* wt_proc = wtlist->value;
     int proc_i = wt_proc->proc_id;
@@ -468,7 +464,8 @@ RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
         // just in case the previous while loop breaks out early
         if (rsrc->next == nullptr) {
           rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, units};
-          Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
+          Node<rsrc_unit*>* new_rsrc =
+              new Node<rsrc_unit*>{rsrc_units, nullptr};
           rsrc->next = new_rsrc;
         }
       }
@@ -501,8 +498,8 @@ RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
   } else {
     rec = 0;
   }
-  return 0; 
-  }
+  return 0;
+}
 
 RC ExtendedManager::timeout() {
   Node<int>* rng_proc_i = nullptr;
@@ -531,7 +528,7 @@ RC ExtendedManager::timeout() {
     cur->next = rng_proc_i;
     rng_proc_i->next = nullptr;
   }
-  
+
   scheduler();
   return 0;
 }
@@ -551,15 +548,16 @@ RC ExtendedManager::scheduler() {
   }
   std::cout << "process " << rng_proc_i->value << " running" << std::endl;
   log(std::to_string(rng_proc_i->value));
-  return 0; 
+  return 0;
 }
 
 RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
   if (n < 2) {
     std::cerr << "Priority level must be at least 2" << std::endl;
+    log("-1");
     return -1;
   }
-  
+
   if (this->init_status) {
     outFile << std::endl;
     reset();
@@ -586,7 +584,6 @@ RC ExtendedManager::init(int n, int u0, int u1, int u2, int u3) {
   create(INIT_PROC);
   this->init_status = 1;
 
-
   return 0;
 }
 
@@ -598,21 +595,22 @@ RC ExtendedManager::init_default() {
 void ExtendedManager::reset() {
   for (int i = 0; i < MAX_PROC; i++) {
     if (PCB[i] != nullptr) {
-      Node<int>* child = PCB[i]->children;
-      Node<int>* cur_chld = child;
+      // delete all children
+      Node<int>* cur_chld = PCB[i]->children;
+      Node<int>* nextChild = nullptr;
       while (cur_chld != nullptr) {
-        child = cur_chld->next;
+        nextChild = cur_chld->next;
         delete cur_chld;
-        cur_chld = nullptr;
-        cur_chld = child;
+        cur_chld = nextChild;
       }
-      Node<rsrc_unit*>* rsrc = PCB[i]->resources;
-      Node<rsrc_unit*>* cur_rsrc = rsrc;
+      // delete all resources
+      Node<rsrc_unit*>* cur_rsrc = PCB[i]->resources;
+      Node<rsrc_unit*>* nextRsrc = nullptr;
       while (cur_rsrc != nullptr) {
-        rsrc = cur_rsrc->next;
+        nextRsrc = cur_rsrc->next;
+        delete cur_rsrc->value;
         delete cur_rsrc;
-        cur_rsrc = nullptr;
-        cur_rsrc = rsrc;
+        cur_rsrc = nextRsrc;
       }
       delete PCB[i];
       PCB[i] = nullptr;
@@ -621,13 +619,13 @@ void ExtendedManager::reset() {
 
   for (int i = 0; i < MAX_RESRC; ++i) {
     if (RCB[i] != nullptr) {
-      Node<w_proc*>* wtlist = RCB[i]->waitlist;
-      Node<w_proc*>* cur_lst = wtlist;
+      Node<w_proc*>* cur_lst = RCB[i]->waitlist;
+      Node<w_proc*>* nextList = nullptr;
       while (cur_lst != nullptr) {
-        wtlist = cur_lst->next;
+        nextList = cur_lst->next;
+        delete cur_lst->value;
         delete cur_lst;
-        cur_lst = nullptr;
-        cur_lst = wtlist;
+        cur_lst = nextList;
       }
       delete RCB[i];
       RCB[i] = nullptr;
@@ -713,11 +711,11 @@ void ExtendedManager::print_resource(int i) {
   }
 }
 
-void ExtendedManager::openLogFile(const std::string &filename) {
-    outFile.open(filename);
-    if (!outFile) {
-        std::cerr << "Failed to open " << filename << " for writing." << std::endl;
-    }
+void ExtendedManager::openLogFile(const std::string& filename) {
+  outFile.open(filename);
+  if (!outFile) {
+    std::cerr << "Failed to open " << filename << " for writing." << std::endl;
+  }
 }
 
 void ExtendedManager::log(const std::string& message) {
@@ -728,7 +726,7 @@ void ExtendedManager::log(const std::string& message) {
       outFile << " " + message;
     }
   } else {
-      std::cerr << "Logfile is not open for writing." << std::endl;
+    std::cerr << "Logfile is not open for writing." << std::endl;
   }
 }
 }  // namespace PeterOS

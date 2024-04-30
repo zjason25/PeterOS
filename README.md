@@ -36,14 +36,14 @@ A Process and Resource Management Shell Program
 A `Makefile` contains configurations that compile and link appropriate object files into one executable `PeterShell` 
 
 ## How to run
-[Upload](#how-to-upload) `143b_p1_JZ/` folder to ICS Openlab. Under the `143b_p1_JZ/` directory, running `make` in the command line will generate an executable named `PeterShell` under the `bin/` directory
+[Upload](#how-to-upload) `143b_p1_JZ/` folder to **ICS Openlab**. Under the `143b_p1_JZ/` directory, running `make` in the command line will generate an executable named `PeterShell` under the `bin/` directory
 
 
 ### Required Option - mutually exclusive
 - **`-m`**\
 Starts the program in manual mode, allowing for users to enter inputs via command line
 - **`-f INPUT_FILE` (Use this for grading)**\
-Starts the program in file mode. The program reads the command from `INPUT_FILE` line by line and execute them sequentially to completion
+Starts the program in file mode. The program reads the command from `INPUT_FILE` line by line and execute them sequentially to completion. A sample input file is placed under `rsrc/` folder.
 
 ### Example:
 
@@ -58,9 +58,9 @@ $ ./bin/PeterShell -f rsrc/input.txt
 
 ### TLDR:
 1. `make`
-2. `./bin/PeterShell -m` or `./bin/PeterShell -f [path_to_input.txt]`
+2. Run `./bin/PeterShell -m` or `./bin/PeterShell -f [path_to_input.txt]` to start program
 3. `make clean` deletes object files, executable, and output.txt
-4. *file mode* will exit once the program executes every command from `input.txt`. The user can exit *Manual mode* with `q` command. Both modes produce a `output.txt` in the the current working directory upon exit.
+4. *File mode* will exit once the program executes every command from `input.txt`. The user can exit *manual mode* with `q` command. Both modes produce a `output.txt` in the the current working directory upon exit.
 
 ### How to Upload
 Just a friendly reminder on how to upload file to ICS Openlab :>

@@ -54,8 +54,6 @@ namespace PeterOS {
 
         // debugging helper functions
         void print_RL();
-        void print_PCB();
-        void print_RCB();
         void print_parent(int i);
         void print_children(int i);
         void print_resource(int i);
