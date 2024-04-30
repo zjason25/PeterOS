@@ -36,7 +36,7 @@ A Process and Resource Management Shell Program
 A `Makefile` contains configurations that compile and link appropriate object files into one executable `PeterShell` 
 
 ## How to run
-Running `make` in the command line will generate an executable named `PeterShell` under the `bin/` directory
+Upload `143b/` folder to ICS Openlab. Under the `143b/` directory, running `make` in the command line will generate an executable named `PeterShell` under the `bin/` directory
 
 
 ### Required Option - mutually exclusive
@@ -44,10 +44,6 @@ Running `make` in the command line will generate an executable named `PeterShell
 Starts the program in manual mode, allowing for users to enter inputs via command line
 - **`-f INPUT_FILE` (Use this for grading)**\
 Starts the program in file mode. The program reads the command from `INPUT_FILE` line by line and execute them sequentially to completion
-
-### Optional Option
-- **`-v (to be implemented)`**\
-The program will run in verbose mode, explaining the effects following each command and providing detailed reasons for errors
 
 ### Example:
 
@@ -64,3 +60,4 @@ $ ./bin/PeterShell -f rsrc/input.txt
 1. `make`
 2. `./bin/PeterShell -m` or `./bin/PeterShell -f [path_to_input.txt]`
 3. `make clean` deletes object files, executable, and output.txt
+4. *file mode* will exit once the program executes every command from `input.txt`. The user can exit *Manual mode* with `q` command. Both modes produce a `output.txt` in the the current working directory upon exit.

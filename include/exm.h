@@ -51,7 +51,6 @@ namespace PeterOS {
         int pid = 0;                                                      // process id is not reused
         int RL_levels = -1;                                               // levels of priority
         int init_status = 0;                                              // enables reset() after the first system startup
-        bool verbose = false;
 
         // debugging helper functions
         void print_RL();
