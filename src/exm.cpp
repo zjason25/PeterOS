@@ -214,10 +214,11 @@ int ExtendedManager::destroy(int proc_id, int &rec) {
     std::cout << "Removing resources\n";
     Node<rsrc_unit*>* cur_rsrc = cur_proc->resources;
     while (cur_rsrc != nullptr) {
+      Node<rsrc_unit*>* next_rsrc = cur_rsrc->next;
       rsrc_unit* unit = cur_rsrc->value;
       int defaultRec = 1;
       release(proc_id, unit->index, unit->units_requested, defaultRec);
-      cur_rsrc = cur_rsrc->next;
+      cur_rsrc = next_rsrc;
     }
   }
   
@@ -438,8 +439,9 @@ RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
 
   // unblock process from waitlist
   Node<w_proc*>* wtlist = resource->waitlist;
-  Node<w_proc*>* prev_list = nullptr;
-  while (wtlist != nullptr) {
+  Node<w_proc*>* temp = nullptr;
+  
+  while (wtlist != nullptr && resource->state > 0) {
     w_proc* wt_proc = wtlist->value;
     int proc_i = wt_proc->proc_id;
     int units = wt_proc->units_requested;
@@ -463,6 +465,7 @@ RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
           }
           rsrc = rsrc->next;
         }
+        // just in case the previous while loop breaks out early
         if (rsrc->next == nullptr) {
           rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, units};
           Node<rsrc_unit*>* new_rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
@@ -473,12 +476,11 @@ RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
       cur_proc->ready = 1;
 
       // remove (j, k) from waitlist
-      if (prev_list == nullptr) {
-        resource->waitlist = resource->waitlist->next;
-      } else {
-        prev_list->next = wtlist->next;
-      }
-      delete wtlist;
+      resource->waitlist = wtlist->next;
+      temp = wtlist;
+      wtlist = wtlist->next;
+      delete temp->value;
+      delete temp;
 
       // insert j into RL
       Node<int>* RL_level = RL[cur_proc->p];
@@ -488,11 +490,8 @@ RC ExtendedManager::release(int proc_id, int resrc_id, int k, int &rec) {
         while (RL_level->next != nullptr) {
           RL_level = RL_level->next;
         }
-        RL_level = new Node<int>{proc_i, nullptr};
+        RL_level->next = new Node<int>{proc_i, nullptr};
       }
-
-      prev_list = wtlist;
-      wtlist = wtlist->next;
     } else {
       break;
     }
@@ -707,7 +706,7 @@ void ExtendedManager::print_resource(int i) {
       if (waitlist->next == nullptr) {
         std::cout << ")" << std::endl;
       } else {
-        std::cout << "), " << std::endl;
+        std::cout << "), ";
       }
       waitlist = waitlist->next;
     }
