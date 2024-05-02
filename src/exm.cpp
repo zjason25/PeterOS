@@ -89,8 +89,9 @@ RC ExtendedManager::create(int p) {
   }
 
   std::cout << "process " << pid << " created" << std::endl;
-  pid++;
   scheduler();
+  pid++;
+  
 
   return 0;
 }
@@ -720,7 +721,7 @@ void ExtendedManager::openLogFile(const std::string& filename) {
 
 void ExtendedManager::log(const std::string& message) {
   if (outFile.is_open()) {
-    if (pid == 1) {
+    if (pid == 0) {
       outFile << message;
     } else {
       outFile << " " + message;
