@@ -298,8 +298,8 @@ RC ExtendedManager::request(int resrc_id, int k) {
       rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
       rng_proc->resources = new Node<rsrc_unit*>{rsrc_units, nullptr};
     } else {
-      // updating existing node
-      while (rsrc->next != nullptr) {
+      // updating existing node: wrong here
+      while (rsrc != nullptr) {
         rsrc_unit* unit = rsrc->value;
         if (unit->index == resrc_id) {
           unit->units_requested += k;
@@ -308,9 +308,9 @@ RC ExtendedManager::request(int resrc_id, int k) {
         rsrc = rsrc->next;
       }
       // insert at tail
-      if (rsrc->next == nullptr) {
+      if (rsrc == nullptr) {
         rsrc_unit* rsrc_units = new rsrc_unit{resrc_id, k};
-        rsrc->next = new Node<rsrc_unit*>{rsrc_units, nullptr};
+        rsrc = new Node<rsrc_unit*>{rsrc_units, nullptr};
       }
     }
     std::cout << "Allocated " << k << " units of Resource " << resrc_id
