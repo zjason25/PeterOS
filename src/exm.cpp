@@ -1,11 +1,11 @@
-#include <iostream>
-#include <string>
 #include "exm.h"
 
+#include <iostream>
+#include <string>
 
 namespace PeterOS {
 ExtendedManager& ExtendedManager::instance() {
-  static ExtendedManager _ex_manager = ExtendedManager();
+  static ExtendedManager _ex_manager;
   return _ex_manager;
 }
 ExtendedManager::ExtendedManager() { openLogFile("output.txt"); };
