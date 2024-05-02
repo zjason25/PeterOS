@@ -60,11 +60,10 @@ $ ./bin/PeterShell -f rsrc/input.txt
 1. `make`
 2. Run `./bin/PeterShell -m` or `./bin/PeterShell -f [path_to_input.txt]` to start program
 3. `make clean` deletes object files, executable, and output.txt
-4. *File mode* will exit once the program executes every command from `input.txt`. The user can exit *manual mode* with `q` command. Both modes produce a `output.txt` in the the current working directory upon exit.
+4. *File mode* will exit once the program executes every command from `input.txt`. The user can exit *manual mode* with `q` command. Both modes produce a `output.txt` in the the current working directory upon normal exit.
 
 ### How to Upload
 Just a friendly reminder on how to upload file to ICS Openlab :>
 ```
 scp -r /path/to/local/folder username@openlab.ics.uci.edu:/path/to/remote/destination
-
 ```

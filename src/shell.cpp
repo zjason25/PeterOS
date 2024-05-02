@@ -66,8 +66,13 @@ int main(int argc, char *argv[]) {
     }
     std::string line;
     while (std::getline(file, line)) {
-      std::cout << line << std::endl;
-      run_command(line, manager);
+      if (!line.empty()) {
+        if (line.back() == '\r') {
+          line.pop_back();
+        }
+        std::cout << line << std::endl;
+        run_command(line, manager);
+      }
     }
     file.close(); // Close the file
   }
